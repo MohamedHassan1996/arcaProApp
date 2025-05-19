@@ -14,7 +14,7 @@ return [
     */
 
     'failed' => 'password o credenziali non corretti',
-    'password' => 'كلمة المرور غير صحيحة',
+    'password' => 'password non corretti',
     'throttle' => 'Too many login attempts. Please try again in :seconds seconds.',
     'inactive_account' => 'هذا الحساب غير مفعل',
     'logged_out' => 'لقد قمت بالخروج',
