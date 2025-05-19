@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'failed' => 'اسم المستخدم او كلمة المرور غير صحيحة',
+    'failed' => 'password o credenziali non corretti',
     'password' => 'كلمة المرور غير صحيحة',
     'throttle' => 'Too many login attempts. Please try again in :seconds seconds.',
     'inactive_account' => 'هذا الحساب غير مفعل',
