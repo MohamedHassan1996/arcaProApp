@@ -32,6 +32,10 @@ class ForgetPasswordController extends Controller //implements HasMiddleware
 
             $operatorEmail = DB::connection('proMaintenances')->table('emails')->where('email', $data['email'])->first();
 
+            if(!$operatorEmail) {
+                return ApiResponse::error(__('auth.email_not_found'), [], HttpStatusCode::UNAUTHORIZED);
+            }
+
             $user = User::where('operator_guid', $operatorEmail->employee_guid)->first();
 
 
