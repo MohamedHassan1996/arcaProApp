@@ -26,7 +26,11 @@ class ChangeForgetPasswordController extends Controller //implements HasMiddlewa
 
         $operatorEmail = DB::connection('proMaintenances')->table('emails')->where('email', $data['email'])->first();
 
-        $otp = Otp::where('email', $data['email'])->where('type', 1)->first();
+        if(!$operatorEmail) {
+            return ApiResponse::error(__('auth.email_not_found'), [], HttpStatusCode::UNAUTHORIZED);
+        }
+
+        $otp = Otp::where('otp', $data['otp'])->where('email', $data['email'])->where('type', 1)->first();
 
         if(!$otp) {
             return ApiResponse::error(__('auth.invalid_otp'), [], HttpStatusCode::UNAUTHORIZED);

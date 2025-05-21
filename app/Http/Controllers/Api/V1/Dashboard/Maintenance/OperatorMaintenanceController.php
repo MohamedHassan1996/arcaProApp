@@ -41,6 +41,7 @@ class OperatorMaintenanceController extends Controller implements HasMiddleware
         $maintenances = QueryBuilder::for(Maintenance::class)
             ->allowedFilters([
                 AllowedFilter::custom('date', new FilterMaintenanceDate()),
+                AllowedFilter::exact('anagraphic_guid', 'client'),
             ])
             ->select([
                 'guid',
