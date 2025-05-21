@@ -16,7 +16,11 @@ return [
     'failed' => 'password o credenziali non corretti',
     'password' => 'password non corretti',
     'throttle' => 'Too many login attempts. Please try again in :seconds seconds.',
-    'inactive_account' => 'هذا الحساب غير مفعل',
-    'logged_out' => 'لقد قمت بالخروج',
-
+    'inactive_account' => 'Questo account non è attivo',
+    'logged_out' => 'Hai effettuato il logout',
+    'email_not_found' => 'Email non trovata',
+    'email_sent' => 'controlla la tua email',
+    'invalid_otp' => 'OTP non valido',
+    'valid_otp' => 'OTP valido',
+    'password_changed' => 'Password cambiata con successo',
 ];

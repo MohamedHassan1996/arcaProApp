@@ -13,11 +13,11 @@ return [
     |
     */
 
-    'reset' => 'Your password has been reset.',
+    'reset' => 'La tua password è stata reimpostata.',
     'sent' => 'We have emailed your password reset link.',
     'throttled' => 'Please wait before retrying.',
     'token' => 'This password reset token is invalid.',
     'user' => "We can't find a user with that email address.",
-    'current_password' => 'رقم المرور الحالى غير صحيح',
+    'current_password' => 'La password attuale non è corretta.',
 
 ];

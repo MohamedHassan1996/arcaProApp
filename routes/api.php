@@ -4,10 +4,13 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\Dashboard\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Dashboard\Maintenance\OperatorMaintenanceController;
 use App\Http\Controllers\Api\V1\Dashboard\Maintenance\OperatorMaintenanceReportController;
+use App\Http\Controllers\Api\V1\Dashboard\User\ChangeForgetPasswordController;
 use App\Http\Controllers\Api\V1\Dashboard\User\UserController;
 use App\Http\Controllers\Api\V1\Select\SelectController;
 use App\Http\Controllers\Api\V1\Dashboard\User\UserProfileController;
 use App\Http\Controllers\Api\V1\Dashboard\User\ChangePasswordController;
+use App\Http\Controllers\Api\V1\Dashboard\User\ForgetPasswordController;
+use App\Http\Controllers\Api\V1\Dashboard\User\VerifyOtpController;
 use App\Http\Controllers\Api\V1\Dashboard\VehicleStock\VehicleStockController;
 
 Route::prefix('v1/')->group(function () {
@@ -17,6 +20,10 @@ Route::prefix('v1/')->group(function () {
         Route::post('/login','login');
         Route::post('/logout','logout');
     });
+
+    Route::put('auth/forget-password', ForgetPasswordController::class);
+    Route::put('auth/change-forget-password', ChangeForgetPasswordController::class);
+    Route::get('verify-otp', VerifyOtpController::class);
 
     // Users
     Route::apiResource('users', UserController::class);

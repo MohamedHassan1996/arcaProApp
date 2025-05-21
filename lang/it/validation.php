@@ -35,7 +35,7 @@ return [
     'can' => 'The :attribute field contains an unauthorized value.',
     'confirmed' => 'The :attribute field confirmation does not match.',
     'contains' => 'The :attribute field is missing a required value.',
-    'current_password' => 'الرقم السرى الحالى غير صحيح',
+    'current_password' => 'La password attuale non è corretta.',
     'date' => 'The :attribute field must be a valid date.',
     'date_equals' => 'The :attribute field must be a date equal to :date.',
     'date_format' => 'The :attribute field must match the format :format.',
@@ -175,21 +175,9 @@ return [
     */
 
     'custom' => [
-        // users
+    // utenti (users)
         'username' => [
-            'unique' => 'اسم المستخدم موجود من قبل',
-        ],
-
-        // categories
-        'name' => [
-            'unique' => 'اسم التصنيف موجود من قبل',
-        ],
-    ],
-
-    'products' => [
-
-        'name' => [
-            'unique' => 'اسم المنتج موجود من قبل',
+            'unique' => 'Il nome utente è già stato utilizzato.',
         ],
     ],
 
