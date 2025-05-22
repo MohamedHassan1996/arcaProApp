@@ -108,7 +108,7 @@ class OperatorMaintenanceController extends Controller implements HasMiddleware
                 ->get();
 
             if($maintenanceCapos->count() > 0) {
-                $maintenance->capos = implode(', ', $maintenanceCapos->pluck('full_name')->toArray());
+                $maintenance->capos =$maintenanceCapos->pluck('full_name')->toArray();
             }
 
             $maintenanceOperators = Employee::select('firstname', 'lastname')
@@ -116,7 +116,7 @@ class OperatorMaintenanceController extends Controller implements HasMiddleware
                 ->get();
 
             if($maintenanceOperators->count() > 0) {
-                $maintenance->operators = implode(', ', $maintenanceCapos->pluck('full_name')->toArray());
+                $maintenance->operators = $maintenanceCapos->pluck('full_name')->toArray();
             }
 
             $maintenance->vehicles = Vehicle::selectRaw('GROUP_CONCAT(description SEPARATOR ", ") as descriptions')
@@ -142,7 +142,7 @@ class OperatorMaintenanceController extends Controller implements HasMiddleware
                 ->whereIn('guid', explode('##', $maintenanceDetail->materiale_guids))
                 ->get();
                 if($maintenanceDetail->materiale->count() > 0) {
-                    $maintenanceDetail->materiale = implode(', ', $maintenanceDetail->materiale->pluck('parameter_value')->toArray());
+                    $maintenanceDetail->materiale = $maintenanceDetail->materiale->pluck('parameter_value')->toArray();
                 }else{
                     $maintenanceDetail->materiale = null;
                 }
@@ -151,7 +151,7 @@ class OperatorMaintenanceController extends Controller implements HasMiddleware
                 ->whereIn('guid', explode('##', $maintenanceDetail->attivita_guids))
                 ->get();
                 if($maintenanceDetail->attivita->count() > 0) {
-                    $maintenanceDetail->attivita = implode(', ', $maintenanceDetail->attivita->pluck('parameter_value')->toArray());
+                    $maintenanceDetail->attivita = $maintenanceDetail->attivita->pluck('parameter_value')->toArray();
                 }else{
                     $maintenanceDetail->attivita = null;
                 }
@@ -160,7 +160,7 @@ class OperatorMaintenanceController extends Controller implements HasMiddleware
                 ->whereIn('guid', explode('##', $maintenanceDetail->mezzi_opera_guids))
                 ->get();
                 if($maintenanceDetail->mezzi_opera->count() > 0) {
-                    $maintenanceDetail->mezzi_opera = implode(', ', $maintenanceDetail->mezzi_opera->pluck('parameter_value')->toArray());
+                    $maintenanceDetail->mezzi_opera = $maintenanceDetail->mezzi_opera->pluck('parameter_value')->toArray();
                 }else{
                     $maintenanceDetail->mezzi_opera = null;
                 }
