@@ -15,7 +15,6 @@ class OperatorMaintenanceResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        //dd($this);
         return [
             'maintenanceGuid' => $this->guid,
             'status' => $this->status??"",
@@ -35,7 +34,7 @@ class OperatorMaintenanceResource extends JsonResource
             'assistenzaClient' => $this->assistenza_client? 'SI' : 'NO',
             'vehicles' => $this->vehicles,
             'contactName' => $this->contractName,
-            'fineLavoro' => $this->fine_lavoro,
+            'fineLavoro' => $this->fine_lavoro??'',
             'details' => $this->details
          ];
     }

@@ -10,12 +10,12 @@ class Maintenance extends Model
 {
     protected $connection = 'proMaintenances';
 
-    protected function casts(): array
-    {
-        return [
-            'status_guid' => MaintenanceStatus::class
-        ];
-    }
+    // protected function casts(): array
+    // {
+    //     return [
+    //         'status_guid' => MaintenanceStatus::class
+    //     ];
+    // }
 
     public function anagraphic()
     {
