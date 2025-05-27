@@ -12,7 +12,7 @@ class Employee extends Model
     {
         if($this->firstname && $this->lastname) {
             return $this->firstname . ' ' . $this->lastname;
-        }elseif($this->first_name) {
+        }elseif($this->firstname) {
             return $this->firstname;
         }elseif($this->lastname) {
             return $this->lastname;

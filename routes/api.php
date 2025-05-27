@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\Dashboard\Auth\AuthController;
-use App\Http\Controllers\Api\V1\Dashboard\Maintenance\OperatorMaintenanceController;
+use App\Http\Controllers\Api\V1\Dashboard\Maintenance\OperatorMaintenanceControllerTwo;
 use App\Http\Controllers\Api\V1\Dashboard\Maintenance\OperatorMaintenanceReportController;
 use App\Http\Controllers\Api\V1\Dashboard\User\ChangeForgetPasswordController;
 use App\Http\Controllers\Api\V1\Dashboard\User\UserController;
@@ -36,8 +36,8 @@ Route::prefix('v1/')->group(function () {
     });
 
     Route::prefix('operator-maintenances')->group(function(){
-        Route::get('', [OperatorMaintenanceController::class, 'index']);
-        Route::get('{guid}', [OperatorMaintenanceController::class, 'show']);
+        Route::get('', [OperatorMaintenanceControllerTwo::class, 'index']);
+        Route::get('{guid}', [OperatorMaintenanceControllerTwo::class, 'show']);
     });
 
     Route::prefix('vehicle-stocks')->group(function(){

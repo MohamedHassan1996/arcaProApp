@@ -26,7 +26,7 @@ class AllOperatorMaintenanceCollection extends ResourceCollection
     public function toArray(Request $request): array
     {
         return [
-            'maintenances' => AllOperatorMaintenanceResource::collection($this->collection),
+            'maintenances' => OperatorMaintenanceResource::collection($this->collection),
             'pagination' => $this->pagination,
         ];
     }

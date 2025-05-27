@@ -73,7 +73,7 @@ class OperatorMaintenanceController extends Controller implements HasMiddleware
                 $query->select('guid', 'regione_sociale');
             }])
             ->orderByRaw('start_date IS NULL, start_date DESC')
-            ->paginate($request->pageSize ?? 10);
+            ->paginate($request->pageSize ?? 100000);
 
         return ApiResponse::success(new AllOperatorMaintenanceCollection($maintenances));
     }
