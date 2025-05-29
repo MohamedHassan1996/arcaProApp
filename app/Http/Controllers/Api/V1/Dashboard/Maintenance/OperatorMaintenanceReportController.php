@@ -31,36 +31,44 @@ class OperatorMaintenanceReportController extends Controller implements HasMiddl
         try {
             $data = $request->all();
 
-            $path = null;
 
             DB::beginTransaction();
 
-            if(isset($data['path'])) {
-                $path = Storage::disk('public')->putAs('maintenance_reports', $data['path'], Str::random(10));
-            }
+            foreach ($data['reports'] as $key => $report) {
+                $path = null;
 
-            $maintenanceReport = MaintenanceReport::create([
-                'maintenance_guid' => $data['maintenanceGuid'],
-                'leave_at' => $data['leaveAt'],
-                'arrive_at' => $data['arriveAt'],
-                'is_one_work_period' => $data['isOneWorkPeriod'],
-                'work_times' => $data['workTimes'],
-                'numbe_of_meals' => $data['numbeOfMeals'],
-                'product_codices' => $data['productCodices'],
-                'note' => $data['note'],
-                'path' => $path,
-            ]);
+                if(isset($data['path'])) {
+                    $path = Storage::disk('public')->putAs('maintenance_reports', $report['path'], Str::random(10));
+                }
 
-            $stockItems = $data['stockItems'];
-
-            foreach ($stockItems as $stockItemData) {
-                $stockItem = MaintenanceStockItem::create([
-                    'maintenance_report_guid' => $maintenanceReport->guid,
-                    'stock_item_guid' => $stockItemData['stockItemGuid'],
-                    'quantity' => $stockItemData['quantity'],
+                $maintenanceReport = MaintenanceReport::create([
+                    'maintenance_guid' => $report['maintenanceGuid'],
+                    'leave_at' => $report['leaveAt'],
+                    'arrive_at' => $report['arriveAt'],
+                    'is_one_work_period' => $report['isOneWorkPeriod'],
+                    'work_times' => $report['workTimes'],
+                    'numbe_of_meals' => $report['numberOfMeals'],
+                    'product_codices' => $report['productCodices'],
+                    'note' => $report['note'],
+                    'path' => $path,
                 ]);
 
-                Stock::where('guid', $stockItemData['stockItemGuid'])->decrement('quantity', $stockItemData['quantity']);
+                $stockItems = $report['stockItems'];
+
+                foreach ($stockItems as $stockItemData) {
+                    $stockItem = MaintenanceStockItem::create([
+                        'maintenance_report_id' => $maintenanceReport->id,
+                        'stock_item_guid' => $stockItemData['vehicleStockGuid'],
+                        'quantity' => $stockItemData['quantity'],
+                    ]);
+
+                    // Stock::where('guid', $stockItemData['vehicleStockGuid'])->decrement('quantita', $stockItemData['quantity']);
+
+                    DB::connection('arca_pro')->table('tb_magazzino')->where('guid', $stockItemData['vehicleStockGuid'])->update([
+                        'quantita' => DB::raw('quantita - ' . $stockItemData['quantity']),
+                        'versione' => now()
+                    ]);
+                }
             }
 
 
