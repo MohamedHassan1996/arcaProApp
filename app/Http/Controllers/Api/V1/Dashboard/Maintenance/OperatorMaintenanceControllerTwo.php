@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Dashboard\Maintenance;
 
 use App\Enums\Maintenance\MaintenanceStatus;
+use App\Enums\ResponseCode\HttpStatusCode;
 use App\Filters\Maintenance\FilterMaintenance;
 use App\Filters\Maintenance\FilterMaintenanceDate;
 use App\Helpers\ApiResponse;
@@ -24,6 +25,8 @@ use Spatie\QueryBuilder\QueryBuilder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+
+use function PHPSTORM_META\map;
 
 class OperatorMaintenanceControllerTwo extends Controller implements HasMiddleware
 {
@@ -156,12 +159,20 @@ foreach ($maintenanceDetails as $detail) {
         ->pluck('codice')
         ->toArray();
 
+    $detailProductBarCodes = [];
+
+    foreach($productCodes as $productCode){
+        $detailProductBarCodes[] = [
+            'productGuid' => '',
+            'productBarCode' => ''
+        ];
+    }
     // Step 3: Join codes or default to "-"
     $productCodice = count($productCodes) ? implode(', ', $productCodes) : '-';
 
     $productDesc = count($productCodes) ? "Tipo nastro: {$productCodice}" : "";
 
-    $productBarCodes = array_merge($productBarCodes, $productCodes);
+    $productBarCodes = array_merge($productBarCodes, $detailProductBarCodes);
 
     $detailsData[] = [
         'guid'         => $detail->guid,
@@ -175,7 +186,7 @@ foreach ($maintenanceDetails as $detail) {
 }
 
 $maintenance->details = $detailsData;
-    $maintenance->productCodes = $productBarCodes;
+    $maintenance->productBarCodes = $productBarCodes;
 
                 // Optional: eager load brief maintenance details count or summary if needed
 
@@ -212,7 +223,7 @@ $maintenance->details = $detailsData;
         ->first();
 
     if (!$maintenance) {
-        return ApiResponse::error('Maintenance not found.', [], 404);
+        return ApiResponse::error('Maintenance not found.', [], HttpStatusCode::NOT_FOUND);
     }
 
     // Helper closure to get parameter values
