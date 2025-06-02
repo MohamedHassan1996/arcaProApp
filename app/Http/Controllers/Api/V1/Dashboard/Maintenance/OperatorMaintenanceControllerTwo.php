@@ -161,6 +161,8 @@ foreach ($maintenanceDetails as $detail) {
 
     $productDesc = count($productCodes) ? "Tipo nastro: {$productCodice}" : "";
 
+    $productBarCodes = array_merge($productBarCodes, $productCodes);
+
     $detailsData[] = [
         'guid'         => $detail->guid,
         'intervento'   => $detail->intervento,
