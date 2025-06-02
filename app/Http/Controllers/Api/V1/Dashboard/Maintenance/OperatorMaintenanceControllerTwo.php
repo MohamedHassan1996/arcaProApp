@@ -134,37 +134,46 @@ class OperatorMaintenanceControllerTwo extends Controller implements HasMiddlewa
                     ->value('descriptions')
                 : "";
 $maintenanceDetails = DB::connection('proMaintenances')->table('maintenance_details')
-        ->leftJoin('parameter_values as intervento', 'maintenance_details.tipo_intervento_guid', '=', 'intervento.guid')
-        ->leftJoin('products', 'maintenance_details.product_guid', '=', 'products.guid')
-        ->select(
-            'maintenance_details.*',
-            'intervento.parameter_value as intervento',
-            'products.codice as productCodice'
-        )
-        ->where('maintenance_guid', $maintenance->guid)
-        ->whereNull('maintenance_details.deleted_at')
-        ->get();
-                    $detailsData = [];
-    foreach ($maintenanceDetails as $detail) {
-        $productCodice = $detail->productCodice ?? '-';
-        $larghezza = $detail->larghezza ?? '-';
-        $sviluppo = $detail->sviluppo ?? '-';
+    ->leftJoin('parameter_values as intervento', 'maintenance_details.tipo_intervento_guid', '=', 'intervento.guid')
+    ->select(
+        'maintenance_details.*',
+        'intervento.parameter_value as intervento'
+    )
+    ->where('maintenance_guid', $maintenance->guid)
+    ->whereNull('maintenance_details.deleted_at')
+    ->get();
 
-        $productDesc = "Tipo nastro: {$productCodice}" . PHP_EOL .
-                       "Larghezza: {$larghezza} | Lunghezza: {$sviluppo}";
+$detailsData = [];
+    $productBarCodes = [];
 
-        $detailsData[] = [
-            'guid'         => $detail->guid,
-            'intervento'   => $detail->intervento,
-            'product'      => $productDesc,
-            'materiale'    => $getParameterValues($detail->materiale_guids),
-            'attivita'     => $getParameterValues($detail->attivita_guids),
-            'mezziOpera'   => $getParameterValues($detail->mezzi_opera_guids),
-            'rifPosizione' => $detail->rif_pos,
-        ];
-    }
+foreach ($maintenanceDetails as $detail) {
+    // Step 1: Get product GUIDs (assuming '##' separated)
+    $productGuids = explode('##', $detail->product_guids ?? '');
 
-    $maintenance->details = $detailsData;
+    // Step 2: Get product codes from DB
+    $productCodes = DB::connection('proMaintenances')->table('products')
+        ->whereIn('guid', $productGuids)
+        ->pluck('codice')
+        ->toArray();
+
+    // Step 3: Join codes or default to "-"
+    $productCodice = count($productCodes) ? implode(', ', $productCodes) : '-';
+
+    $productDesc = count($productCodes) ? "Tipo nastro: {$productCodice}" : "";
+
+    $detailsData[] = [
+        'guid'         => $detail->guid,
+        'intervento'   => $detail->intervento,
+        'product'      => $productDesc,
+        'materiale'    => $getParameterValues($detail->materiale_guids),
+        'attivita'     => $getParameterValues($detail->attivita_guids),
+        'mezziOpera'   => $getParameterValues($detail->mezzi_opera_guids),
+        'rifPosizione' => $detail->rif_pos,
+    ];
+}
+
+$maintenance->details = $detailsData;
+    $maintenance->productCodes = $productBarCodes;
 
                 // Optional: eager load brief maintenance details count or summary if needed
 
@@ -249,9 +258,7 @@ $maintenanceDetails = DB::connection('proMaintenances')->table('maintenance_deta
         $larghezza = $detail->larghezza ?? '-';
         $sviluppo = $detail->sviluppo ?? '-';
 
-        $productDesc = "Tipo nastro: {$productCodice}" . PHP_EOL .
-                       "Larghezza: {$larghezza} | Lunghezza: {$sviluppo}";
-
+        $productDesc = "Tipo nastro: {$productCodice}";
         $detailsData[] = [
             'guid'         => $detail->guid,
             'intervento'   => $detail->intervento,

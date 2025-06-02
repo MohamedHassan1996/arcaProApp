@@ -35,7 +35,8 @@ class OperatorMaintenanceResource extends JsonResource
             'vehicles' => $this->vehicles,
             'contactName' => $this->contractName,
             'fineLavoro' => $this->fine_lavoro??'',
-            'details' => $this->details
+            'details' => $this->details,
+            'productCodes' => $this->productCodes??[]
          ];
     }
 }

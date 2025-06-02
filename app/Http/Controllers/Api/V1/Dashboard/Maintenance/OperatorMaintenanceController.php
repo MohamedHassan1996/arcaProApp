@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Dashboard\Maintenance;
 
 use App\Enums\Maintenance\MaintenanceStatus;
+use App\Enums\ResponseCode\HttpStatusCode;
 use App\Filters\Maintenance\FilterMaintenance;
 use App\Filters\Maintenance\FilterMaintenanceDate;
 use App\Helpers\ApiResponse;
@@ -12,7 +13,6 @@ use App\Http\Resources\Maintenance\AllOperatorMaintenanceCollection;
 use App\Http\Resources\Maintenance\OperatorMaintenanceResource;
 use App\Models\Employee;
 use App\Models\Maintenance;
-use App\Models\MaintenanceDetail;
 use App\Models\ProParameterValue;
 use App\Models\Vehicle;
 use Illuminate\Routing\Controllers\HasMiddleware;
@@ -21,9 +21,7 @@ use Illuminate\Support\Facades\Auth;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
 
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class OperatorMaintenanceController extends Controller implements HasMiddleware
 {
@@ -66,7 +64,7 @@ class OperatorMaintenanceController extends Controller implements HasMiddleware
                 return $query->where('status_guid', MaintenanceStatus::PROGRAMMATO);
             })
             ->when($userRole == 'admin', function ($query) use ($authUser) {
-                return $query->where('status_guid', request('filter[status_guid]'));
+                return $query->where('status_guid', request('filter[statusGuid]'));
             })
             ->whereNull('deleted_at')
             ->with(['anagraphic' => function ($query) {
@@ -205,7 +203,7 @@ class OperatorMaintenanceController extends Controller implements HasMiddleware
         ->first();
 
     if (!$maintenance) {
-        return ApiResponse::error('Maintenance not found.', [], 404);
+        return ApiResponse::error('Maintenance not found.', [], HttpStatusCode::NOT_FOUND);
     }
 
     // Helper closure to get parameter values
@@ -234,27 +232,34 @@ class OperatorMaintenanceController extends Controller implements HasMiddleware
         ->whereIn('guid', explode('##', $maintenance->mezzo_guids ?? ''))
         ->value('descriptions');
 
-    // Maintenance details
     $maintenanceDetails = DB::connection('proMaintenances')->table('maintenance_details')
         ->leftJoin('parameter_values as intervento', 'maintenance_details.tipo_intervento_guid', '=', 'intervento.guid')
-        ->leftJoin('products', 'maintenance_details.product_guid', '=', 'products.guid')
         ->select(
             'maintenance_details.*',
-            'intervento.parameter_value as intervento',
-            'products.codice as productCodice'
+            'intervento.parameter_value as intervento'
         )
         ->where('maintenance_guid', $maintenance->guid)
         ->whereNull('maintenance_details.deleted_at')
         ->get();
 
     $detailsData = [];
-    foreach ($maintenanceDetails as $detail) {
-        $productCodice = $detail->productCodice ?? '-';
-        $larghezza = $detail->larghezza ?? '-';
-        $sviluppo = $detail->sviluppo ?? '-';
 
-        $productDesc = "Tipo nastro: {$productCodice}" . PHP_EOL .
-                       "Larghezza: {$larghezza} | Lunghezza: {$sviluppo}";
+    $productBarCodes = [];
+
+    foreach ($maintenanceDetails as $detail) {
+        // Step 1: Get product GUIDs (assuming '##' separated)
+        $productGuids = explode('##', $detail->product_guids ?? '');
+
+        // Step 2: Get product codes from DB
+        $productCodes = DB::connection('proMaintenances')->table('products')
+            ->whereIn('guid', $productGuids)
+            ->pluck('codice')
+            ->toArray();
+
+        // Step 3: Join codes or default to "-"
+        $productCodice = count($productCodes) ? implode(', ', $productCodes) : '-';
+
+        $productDesc = "Tipo nastro: {$productCodice}";
 
         $detailsData[] = [
             'guid'         => $detail->guid,
@@ -268,6 +273,8 @@ class OperatorMaintenanceController extends Controller implements HasMiddleware
     }
 
     $maintenance->details = $detailsData;
+    $maintenance->productCodes = $productBarCodes;
+
 
     return ApiResponse::success(new OperatorMaintenanceResource($maintenance));
 
