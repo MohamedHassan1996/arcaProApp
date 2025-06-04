@@ -10,10 +10,8 @@ use App\Helpers\ApiResponse;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Maintenance\AllOperatorMaintenanceCollection;
-use App\Http\Resources\Maintenance\OperatorMaintenanceResource;
 use App\Models\Employee;
 use App\Models\Maintenance;
-use App\Models\MaintenanceDetail;
 use App\Models\MaintenanceReport;
 use App\Models\ProParameterValue;
 use App\Models\Vehicle;
@@ -23,13 +21,9 @@ use Illuminate\Support\Facades\Auth;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
 
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
-use function PHPSTORM_META\map;
-
-class OperatorMaintenanceControllerTwo extends Controller implements HasMiddleware
+class PeriodicMaintenanceController extends Controller implements HasMiddleware
 {
 
     public static function middleware(): array
@@ -201,96 +195,4 @@ $maintenance->details = $detailsData;
         return ApiResponse::success(new AllOperatorMaintenanceCollection($maintenances));
     }
 
-    public function show($guid){
-        // Fetch main maintenance data
-    $maintenance = DB::connection('proMaintenances')->table('maintenances')
-        ->leftJoin('anagraphics', 'maintenances.anagraphic_guid', '=', 'anagraphics.guid')
-        ->leftJoin('parameter_values as importances', 'maintenances.importance_guid', '=', 'importances.guid')
-        ->leftJoin('parameter_values as status', 'maintenances.status_guid', '=', 'status.guid')
-        ->leftJoin('anagraphic_addresses', 'maintenances.anagraphic_address_guid', '=', 'anagraphic_addresses.guid')
-        ->leftJoin('dependants', 'maintenances.dependant_guid', '=', 'dependants.guid')
-        ->leftJoin('anagraphic_phones', 'maintenances.dependant_phone_guid', '=', 'anagraphic_phones.guid')
-        ->leftJoin('parameter_values as contracts', 'maintenances.contract_guid', '=', 'contracts.guid')
-        ->select(
-            'maintenances.*',
-            'anagraphics.regione_sociale',
-            'importances.parameter_value as importance',
-            'status.parameter_value as status',
-            'anagraphic_addresses.address',
-            'dependants.nome',
-            'dependants.cognome',
-            'anagraphic_phones.phone as referencePhone',
-            'contracts.parameter_value as contractName'
-        )
-        ->where('maintenances.guid', $guid)
-        ->whereNull('maintenances.deleted_at')
-        ->first();
-
-    if (!$maintenance) {
-        return ApiResponse::error('Maintenance not found.', [], HttpStatusCode::NOT_FOUND);
-    }
-
-    // Helper closure to get parameter values
-    $getParameterValues = function ($guids) {
-        return $guids
-            ? ProParameterValue::whereIn('guid', explode('##', $guids))->pluck('parameter_value')->toArray()
-            : null;
-    };
-
-    // Capos
-    $maintenanceCapos = Employee::select(DB::raw("CONCAT(firstname, ' ', lastname) as full_name"))
-        ->whereIn('guid', explode('##', $maintenance->capo_guids ?? ''))
-        ->pluck('full_name')
-        ->toArray();
-    $maintenance->capos = $maintenanceCapos;
-
-    // Operators
-    $maintenanceOperators = Employee::select(DB::raw("CONCAT(firstname, ' ', lastname) as full_name"))
-        ->whereIn('guid', explode('##', $maintenance->operatori_guids ?? ''))
-        ->pluck('full_name')
-        ->toArray();
-    $maintenance->operators = $maintenanceOperators;
-
-    // Vehicles
-    $maintenance->vehicles = Vehicle::selectRaw('GROUP_CONCAT(description SEPARATOR ", ") as descriptions')
-        ->whereIn('guid', explode('##', $maintenance->mezzo_guids ?? ''))
-        ->value('descriptions');
-
-    // Maintenance details
-    $maintenanceDetails = DB::connection('proMaintenances')->table('maintenance_details')
-        ->leftJoin('parameter_values as intervento', 'maintenance_details.tipo_intervento_guid', '=', 'intervento.guid')
-        ->leftJoin('products', 'maintenance_details.product_guid', '=', 'products.guid')
-        ->select(
-            'maintenance_details.*',
-            'intervento.parameter_value as intervento',
-            'products.codice as productCodice'
-        )
-        ->where('maintenance_guid', $maintenance->guid)
-        ->whereNull('maintenance_details.deleted_at')
-        ->get();
-
-    $detailsData = [];
-    foreach ($maintenanceDetails as $detail) {
-        $productCodice = $detail->productCodice ?? '-';
-        $larghezza = $detail->larghezza ?? '-';
-        $sviluppo = $detail->sviluppo ?? '-';
-
-        $productDesc = "Tipo nastro: {$productCodice}";
-        $detailsData[] = [
-            'guid'         => $detail->guid,
-            'intervento'   => $detail->intervento,
-            'product'      => $productDesc,
-            'materiale'    => $getParameterValues($detail->materiale_guids),
-            'attivita'     => $getParameterValues($detail->attivita_guids),
-            'mezziOpera'   => $getParameterValues($detail->mezzi_opera_guids),
-            'rifPosizione' => $detail->rif_pos,
-        ];
-    }
-
-    $maintenance->details = $detailsData;
-
-    return ApiResponse::success(new OperatorMaintenanceResource($maintenance));
-
-
-    }
 }

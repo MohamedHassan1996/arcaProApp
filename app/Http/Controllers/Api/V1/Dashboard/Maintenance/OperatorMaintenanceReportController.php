@@ -7,12 +7,15 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\MaintenanceReport;
 use App\Models\MaintenanceStockItem;
+use App\Models\ReportProductBarcode;
 use App\Models\Stock;
 use Illuminate\Container\Attributes\Storage;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+
+use function PHPSTORM_META\map;
 
 class OperatorMaintenanceReportController extends Controller implements HasMiddleware
 {
@@ -41,6 +44,19 @@ class OperatorMaintenanceReportController extends Controller implements HasMiddl
                     $path = Storage::disk('public')->putAs('maintenance_reports', $report['path'], Str::random(10));
                 }
 
+                $maintenanceProductGuids = DB::connection('proMaintenances')
+                    ->table('maintenances')
+                    ->join('maintenance_details', 'maintenance_details.maintenance_guid', '=', 'maintenances.guid')
+                    ->where('maintenances.guid', $report['maintenanceGuid'])
+                    ->pluck('maintenance_details.product_guids') // get product_guids from details
+                    ->toArray();
+
+                // explode '##' into array of product GUIDs
+                $maintenanceProductGuids = array_map(fn($guids) => explode('##', $guids), $maintenanceProductGuids);
+
+                // optional: flatten the array if you want a single list of GUIDs
+                $maintenanceProductGuids = array_merge(...$maintenanceProductGuids);
+
                 $maintenanceReport = MaintenanceReport::create([
                     'maintenance_guid' => $report['maintenanceGuid'],
                     'leave_at' => $report['leaveAt'],
@@ -53,6 +69,14 @@ class OperatorMaintenanceReportController extends Controller implements HasMiddl
                     'path' => $path,
                 ]);
 
+                foreach ($report['productCodices'] as $key => $productCodice) {
+                    ReportProductBarcode::create([
+                        'maintenance_report_id' => $maintenanceReport->id,
+                        'product_barcode' => $productCodice,
+                        'product_guid' => $maintenanceProductGuids[$key]
+                    ]);
+                }
+
                 $stockItems = $report['stockItems'];
 
                 foreach ($stockItems as $stockItemData) {
@@ -61,8 +85,6 @@ class OperatorMaintenanceReportController extends Controller implements HasMiddl
                         'stock_item_guid' => $stockItemData['vehicleStockGuid'],
                         'quantity' => $stockItemData['quantity'],
                     ]);
-
-                    // Stock::where('guid', $stockItemData['vehicleStockGuid'])->decrement('quantita', $stockItemData['quantity']);
 
                     DB::connection('arca_pro')->table('tb_magazzino')->where('guid', $stockItemData['vehicleStockGuid'])->update([
                         'quantita' => DB::raw('quantita - ' . $stockItemData['quantity']),
