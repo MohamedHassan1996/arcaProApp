@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Dashboard\Maintenance;
 
 use App\Enums\Maintenance\MaintenanceType;
-
+use App\Helpers\ApiResponse;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\ReportProductBarcode;
@@ -83,8 +83,8 @@ class PeriodicMaintenanceStatsController extends Controller implements HasMiddle
         }
 
         // Return or pass to view
-        return response()->json([
-            'totalCount' => $totalCount,
+        return ApiResponse::success([
+            'totalMaintenanceCount' => $totalCount,
             'expiredMaintenanceCount' => $expiredMaintenanceCount,
             'expiredControlCount' => $expiredControlCount,
             'upcomingMaintenanceCount' => $upcomingMaintenanceCount,

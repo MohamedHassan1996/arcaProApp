@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers\Api\V1\Dashboard\Maintenance;
 
+use App\Enums\Maintenance\MaintenanceType;
 use App\Helpers\ApiResponse;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Models\CalendarEvent;
+use App\Models\Maintenance;
 use App\Models\MaintenanceReport;
 use App\Models\MaintenanceStockItem;
 use App\Models\ReportProductBarcode;
@@ -34,6 +37,9 @@ class OperatorMaintenanceReportController extends Controller implements HasMiddl
 
 
             DB::beginTransaction();
+
+            $monthsOfPeriodicMaintenance = 3;
+            $monthsOfControlledMaintenance = 6;
 
             foreach ($data['reports'] as $key => $report) {
                 $path = null;
@@ -67,12 +73,35 @@ class OperatorMaintenanceReportController extends Controller implements HasMiddl
                     'path' => $path,
                 ]);
 
+                $maintenance = Maintenance::where('guid', $report['maintenanceGuid'])->first();
+
                 foreach ($report['productCodices'] as $key => $productCodice) {
-                    ReportProductBarcode::create([
+                    $reportProductBarcode = ReportProductBarcode::create([
                         'maintenance_report_id' => $maintenanceReport->id,
                         'product_barcode' => $productCodice,
-                        'product_guid' => $maintenanceProductGuids[$key]
+                        'product_guid' => $maintenanceProductGuids[$key],
+                        'maintenance_type' => 1
                     ]);
+
+
+                    $nextMaintenanceDate = null;
+                    if($reportProductBarcode->maintenance_type == MaintenanceType::MAINTANANCE || $reportProductBarcode->maintenance_type == MaintenanceType::INSTALLATION) {
+                        $nextMaintenanceDate = $reportProductBarcode->created_at->addMonths($monthsOfPeriodicMaintenance);
+
+                    }elseif($reportProductBarcode->maintenance_type == MaintenanceType::CONTROL) {
+                        $nextMaintenanceDate = $reportProductBarcode->created_at->addMonths($monthsOfControlledMaintenance);
+                    }
+
+                    CalendarEvent::create([
+                        'title' => $reportProductBarcode->product_barcode,
+                        'description' => null,
+                        'maintenance_type' => MaintenanceType::MAINTANANCE->value,
+                        'start_at' => $nextMaintenanceDate,
+                        'end_at' => $nextMaintenanceDate,
+                        'is_all_day' => true,
+                        'client_guid' => $maintenance->anagraphic_guid
+                    ]);
+
                 }
 
                 $stockItems = $report['stockItems'];

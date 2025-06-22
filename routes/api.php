@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\Dashboard\Auth\AuthController;
+use App\Http\Controllers\Api\V1\Dashboard\Event\EventCalendarController;
 use App\Http\Controllers\Api\V1\Dashboard\Maintenance\OperatorMaintenanceControllerTwo;
 use App\Http\Controllers\Api\V1\Dashboard\Maintenance\OperatorMaintenanceReportController;
 use App\Http\Controllers\Api\V1\Dashboard\Maintenance\PeriodicMaintenanceController;
@@ -57,6 +58,10 @@ Route::prefix('v1/')->group(function () {
 
     Route::prefix('operator-maintenance-reports')->group(function(){
         Route::post('', [OperatorMaintenanceReportController::class, 'store']);
+    });
+
+    Route::prefix('events')->group(function(){
+        Route::get('', [EventCalendarController::class, 'index']);
     });
 
 
