@@ -8,14 +8,12 @@ use App\Http\Controllers\Controller;
 use App\Models\MaintenanceReport;
 use App\Models\MaintenanceStockItem;
 use App\Models\ReportProductBarcode;
-use App\Models\Stock;
 use Illuminate\Container\Attributes\Storage;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
-use function PHPSTORM_META\map;
 
 class OperatorMaintenanceReportController extends Controller implements HasMiddleware
 {

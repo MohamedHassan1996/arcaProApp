@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\Maintenance\MaintenanceType;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -14,8 +15,8 @@ return new class extends Migration
         Schema::create('report_product_barcodes', function (Blueprint $table) {
             $table->id();
             $table->foreignId('maintenance_report_id')->constrained();
+            $table->tinyInteger('maintenance_type')->default(MaintenanceType::INSTALLATION->value);
             $table->string('product_barcode');
-            $table->string('product_guid', 36);
             $table->timestamps();
         });
     }

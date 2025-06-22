@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\Dashboard\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Dashboard\Maintenance\OperatorMaintenanceControllerTwo;
 use App\Http\Controllers\Api\V1\Dashboard\Maintenance\OperatorMaintenanceReportController;
+use App\Http\Controllers\Api\V1\Dashboard\Maintenance\PeriodicMaintenanceController;
+use App\Http\Controllers\Api\V1\Dashboard\Maintenance\PeriodicMaintenanceStatsController;
 use App\Http\Controllers\Api\V1\Dashboard\User\ChangeForgetPasswordController;
 use App\Http\Controllers\Api\V1\Dashboard\User\UserController;
 use App\Http\Controllers\Api\V1\Select\SelectController;
@@ -38,6 +40,15 @@ Route::prefix('v1/')->group(function () {
     Route::prefix('operator-maintenances')->group(function(){
         Route::get('', [OperatorMaintenanceControllerTwo::class, 'index']);
         Route::get('{guid}', [OperatorMaintenanceControllerTwo::class, 'show']);
+    });
+
+    Route::prefix('periodic-maintenances')->group(function(){
+        Route::get('', [PeriodicMaintenanceController::class, 'index']);
+        Route::get('{id}', [OperatorMaintenanceControllerTwo::class, 'show']);
+    });
+
+    Route::prefix('periodic-maintenance-stats')->group(function(){
+        Route::get('', [PeriodicMaintenanceStatsController::class, 'index']);
     });
 
     Route::prefix('vehicle-stocks')->group(function(){
