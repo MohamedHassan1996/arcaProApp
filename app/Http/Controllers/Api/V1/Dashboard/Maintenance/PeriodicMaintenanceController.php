@@ -6,10 +6,12 @@ use App\Enums\Maintenance\MaintenanceType;
 use App\Helpers\ApiResponse;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\PeriodicMaintenance\AllPeriodicMaintenanceCollection;
 use App\Models\AnagraphicAddress;
 use App\Models\Maintenance;
 use App\Models\MaintenanceReport;
 use App\Models\ReportProductBarcode;
+use App\Utils\PaginateCollection;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
 
@@ -203,9 +205,9 @@ class PeriodicMaintenanceController extends Controller implements HasMiddleware
             }
 
             // Calculate color status
-            $colorStatus = 0; // default to expired
+            $statusColor = 0; // default to expired
             if ($nextMaintenanceDate->greaterThanOrEqualTo($now)) {
-                $colorStatus = $nextMaintenanceDate->lessThanOrEqualTo($now->copy()->addMonth()) ? 1 : 2;
+                $statusColor = $nextMaintenanceDate->lessThanOrEqualTo($now->copy()->addMonth()) ? 1 : 2;
             }
 
             $periodicMaintenances[] = [
@@ -216,15 +218,18 @@ class PeriodicMaintenanceController extends Controller implements HasMiddleware
                 'maintenanceDate' => $nextMaintenanceDate->format('d/m/Y'),
                 'clientName' => $maintenance?->anagraphic?->regione_sociale ?? '',
                 'clientAddress' => $addressFormatted,
-                'colorStatus' => $colorStatus,
+                'statusColor' => $statusColor,
                 'maintenanceHistory' => $maintenanceHistory
             ];
         }
 
         // Output the result (or return as response)
-        return response()->json([
-            'data' => $periodicMaintenances
-        ]);
+
+
+        return ApiResponse::success(new AllPeriodicMaintenanceCollection(
+            PaginateCollection::paginate(collect($periodicMaintenances), $request->pageSize ?? 10000)
+        ));
+
     }
 
 
