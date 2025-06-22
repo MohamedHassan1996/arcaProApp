@@ -202,6 +202,12 @@ class PeriodicMaintenanceController extends Controller implements HasMiddleware
                 ];
             }
 
+            // Calculate color status
+            $colorStatus = 0; // default to expired
+            if ($nextMaintenanceDate->greaterThanOrEqualTo($now)) {
+                $colorStatus = $nextMaintenanceDate->lessThanOrEqualTo($now->copy()->addMonth()) ? 1 : 2;
+            }
+
             $periodicMaintenances[] = [
                 'maintenanceType' => $typeValue,
                 'productBarcode' => $reportProductBarcode->product_barcode,
@@ -210,6 +216,7 @@ class PeriodicMaintenanceController extends Controller implements HasMiddleware
                 'maintenanceDate' => $nextMaintenanceDate->format('d/m/Y'),
                 'clientName' => $maintenance?->anagraphic?->regione_sociale ?? '',
                 'clientAddress' => $addressFormatted,
+                'colorStatus' => $colorStatus,
                 'maintenanceHistory' => $maintenanceHistory
             ];
         }
