@@ -197,7 +197,7 @@ class EventCalendarController extends Controller implements HasMiddleware
                 }
 
                 $mergedEvents->push(new AllEventResource((object)[
-                    'id' => (string)$event->id ?? $event->guid,
+                    'id' => $event->guid,
                     'title' => $event->title,
                     'description' => $event->description,
                     'start_at' => $event->start_at,

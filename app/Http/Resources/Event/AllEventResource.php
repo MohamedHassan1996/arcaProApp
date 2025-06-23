@@ -17,7 +17,7 @@ class AllEventResource extends JsonResource
     {
 
         return [
-            'eventId' => $this->id,
+            'eventId' => (string)$this->id,
             'title' => $this->title,
             'description' => $this->description,
             'startAt' => $this->start_at? Carbon::parse($this->start_at)->format('Y-m-d H:i') : null,
