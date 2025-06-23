@@ -23,7 +23,7 @@ class AllEventResource extends JsonResource
             'startAt' => $this->start_at? Carbon::parse($this->start_at)->format('Y-m-d H:i') : null,
             'endAt' => $this->end_at
                 ? Carbon::parse($this->end_at)->addMinutes(2)->format('Y-m-d H:i')
-                : null,
+                : Carbon::parse($this->start_at)->addMinutes(2)->format('Y-m-d H:i'),
             'maintenanceType' => $this->maintenance_type,
             'maintenanceGuid' => $this->maintenance_guid?? $this->title,
             'statusColor' => $this->color_status
