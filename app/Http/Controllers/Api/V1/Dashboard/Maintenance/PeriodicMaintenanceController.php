@@ -210,6 +210,9 @@ class PeriodicMaintenanceController extends Controller implements HasMiddleware
                 $statusColor = $nextMaintenanceDate->lessThanOrEqualTo($now->copy()->addMonth()) ? 1 : 2;
             }
 
+            $reportProductBarcodeInstallation = ReportProductBarcode::where('product_barcode', $reportProductBarcode->product_barcode)
+                ->where('maintenance_type', MaintenanceType::INSTALLATION->value)->first();
+
             $periodicMaintenances[] = [
                 'maintenanceType' => $typeValue,
                 'productBarcode' => $reportProductBarcode->product_barcode,
@@ -219,6 +222,7 @@ class PeriodicMaintenanceController extends Controller implements HasMiddleware
                 'clientName' => $maintenance?->anagraphic?->regione_sociale ?? '',
                 'clientAddress' => $addressFormatted,
                 'statusColor' => $statusColor,
+                'installationDate' => $reportProductBarcodeInstallation ? $reportProductBarcodeInstallation->created_at->format('d/m/Y') : '',
                 'maintenanceHistory' => $maintenanceHistory
             ];
         }
