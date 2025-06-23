@@ -3,10 +3,12 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\Dashboard\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Dashboard\Event\EventCalendarController;
+use App\Http\Controllers\Api\V1\Dashboard\Maintenance\MaintenanceRequestController;
 use App\Http\Controllers\Api\V1\Dashboard\Maintenance\OperatorMaintenanceControllerTwo;
 use App\Http\Controllers\Api\V1\Dashboard\Maintenance\OperatorMaintenanceReportController;
 use App\Http\Controllers\Api\V1\Dashboard\Maintenance\PeriodicMaintenanceController;
 use App\Http\Controllers\Api\V1\Dashboard\Maintenance\PeriodicMaintenanceStatsController;
+use App\Http\Controllers\Api\V1\Dashboard\Maintenance\ProductMaintenanceHistoryController;
 use App\Http\Controllers\Api\V1\Dashboard\User\ChangeForgetPasswordController;
 use App\Http\Controllers\Api\V1\Dashboard\User\UserController;
 use App\Http\Controllers\Api\V1\Select\SelectController;
@@ -64,5 +66,12 @@ Route::prefix('v1/')->group(function () {
         Route::get('', [EventCalendarController::class, 'index']);
     });
 
+    Route::prefix('product-maintenance-history')->group(function(){
+        Route::get('', [ProductMaintenanceHistoryController::class, 'index']);
+    });
+
+    Route::prefix('maintenance-request')->group(function(){
+        Route::post('', [MaintenanceRequestController::class, 'store']);
+    });
 
 });
