@@ -151,6 +151,17 @@ return [
             // 'encrypt' => env('DB_ENCRYPT', 'yes'),
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
+        'db_pro_ms' => [
+            'driver' => env('DB_PRO_MS_CONNECTION', 'sqlsrv'),
+            'host' => env('DB_PRO_MS_HOST', 'localhost'),
+            'port' => env('DB_PRO_MS_PORT', '1433'),
+            'database' => env('DB_PRO_MS_DATABASE', 'I5W_PRO_AHR'),
+            'username' => env('DB_PRO_MS_USERNAME', 'GNP2'),
+            'password' => env('DB_PRO_MS_PASSWORD', ''),
+            'charset' => env('DB_PRO_MS_CHARSET', 'utf8'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+        ],
 
     ],
 

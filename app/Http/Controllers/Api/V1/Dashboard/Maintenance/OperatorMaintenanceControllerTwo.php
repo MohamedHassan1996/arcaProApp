@@ -61,7 +61,11 @@ class OperatorMaintenanceControllerTwo extends Controller implements HasMiddlewa
                 'maintenances.mezzo_guids',
                 'maintenances.codice',
                 'maintenances.start_date',
+                'maintenances.leave_hour',
+                'maintenances.distance',
                 'maintenances.arrive_hour',
+                'maintenances.person_numbers',
+                'maintenances.assistenza_client',
                 'maintenances.anagraphic_guid',
                 'maintenances.status_guid',
                 'maintenances.importance_guid',
@@ -91,6 +95,9 @@ class OperatorMaintenanceControllerTwo extends Controller implements HasMiddlewa
                 'importances.parameter_value as importance',
                 'status.parameter_value as status',
                 'anagraphic_addresses.address',
+                'anagraphic_addresses.cap',
+                'anagraphic_addresses.city',
+                'anagraphic_addresses.province',
                 'dependants.nome',
                 'dependants.cognome',
                 'anagraphic_phones.phone as referencePhone',
@@ -185,7 +192,11 @@ foreach ($maintenanceDetails as $detail) {
         'materiale'    => $getParameterValues($detail->materiale_guids),
         'attivita'     => $getParameterValues($detail->attivita_guids),
         'mezziOpera'   => $getParameterValues($detail->mezzi_opera_guids),
+        'noteCantiere' => $getParameterValues($detail->note_cantiere_guids),
         'rifPosizione' => $detail->rif_pos,
+        'dettagliLavoro' => $detail->dettagli_lavoro,
+        'noteSpedizione' => $detail->note_spedizione,
+
     ];
 }
 
@@ -284,6 +295,7 @@ $maintenance->details = $detailsData;
             'attivita'     => $getParameterValues($detail->attivita_guids),
             'mezziOpera'   => $getParameterValues($detail->mezzi_opera_guids),
             'rifPosizione' => $detail->rif_pos,
+            'dettagliLavoro' => $detail->dettagli_lavoro,
         ];
     }
 

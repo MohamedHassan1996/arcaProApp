@@ -28,7 +28,7 @@ class OperatorMaintenanceResource extends JsonResource
             'distance' => $this->distance > 0 ? $this->distance ." + ". $this->distance : "0 + 0",
             'capos' => $this->capos,
             'operators' => $this->operators,
-            'address' => $this->address,
+            'address' => $this->address.' '.$this->cap.' '.$this->city.' ('.$this->province.')',
             'referenceName' => $this->cognome != '' && $this->nome != '' ? $this->cognome . ' ' . $this->nome : ($this->nome != '' ? $this->nome : $this->cognome),
             'referencePhone' => $this->referencePhone,
             'assistenzaClient' => $this->assistenza_client? 'SI' : 'NO',
