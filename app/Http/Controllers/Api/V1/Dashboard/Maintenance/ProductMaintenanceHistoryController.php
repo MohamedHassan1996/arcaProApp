@@ -53,7 +53,7 @@ class ProductMaintenanceHistoryController extends Controller implements HasMiddl
             })->toArray();
 
 
-            $productBarcodeData = DB::connection('proMaintenances')->table('anagraphic_product_codes')->where('barcode', $request->productBarcode)->first();
+            //$productBarcodeData = DB::connection('proMaintenances')->table('anagraphic_product_codes')->where('barcode', $request->productBarcode)->first();
 
             return ApiResponse::success([
                 'productBarcode' => $productBarcode,
@@ -65,43 +65,43 @@ class ProductMaintenanceHistoryController extends Controller implements HasMiddl
             ]);
         }
 
-    // // Fallback: Get data from MySQL tables separately (no join)
-    // $activities = DB::table('arca_attivita')
-    //     ->where('Matricola', $productBarcode)
-    //     ->where('Effettuato', 1)
-    //     ->get();
+        // // Fallback: Get data from MySQL tables separately (no join)
+        // $activities = DB::table('arca_attivita')
+        //     ->where('Matricola', $productBarcode)
+        //     ->where('Effettuato', 1)
+        //     ->get();
 
-    // if ($activities->isEmpty()) {
-    //     return ApiResponse::error('No data found for this barcode.', []);
-    // }
+        // if ($activities->isEmpty()) {
+        //     return ApiResponse::error('No data found for this barcode.', []);
+        // }
 
-    // // Get the product info separately from proMaintenances
-    // $product = DB::connection('proMaintenances')
-    //     ->table('anagraphic_product_codes')
-    //     ->where('barcode', $productBarcode)
-    //     ->first();
+        // // Get the product info separately from proMaintenances
+        // $product = DB::connection('proMaintenances')
+        //     ->table('anagraphic_product_codes')
+        //     ->where('barcode', $productBarcode)
+        //     ->first();
 
-    // $first = $activities->first();
+        // $first = $activities->first();
 
-    // $maintenanceType = [
-    //     'MANUTENZIONE' => MaintenanceType::MAINTANANCE->value,
-    //     'INSTALLAZIONE' => MaintenanceType::INSTALLATION->value,
-    //     'CONTROLLO' => MaintenanceType::CONTROL->value
-    // ];
+        // $maintenanceType = [
+        //     'MANUTENZIONE' => MaintenanceType::MAINTANANCE->value,
+        //     'INSTALLAZIONE' => MaintenanceType::INSTALLATION->value,
+        //     'CONTROLLO' => MaintenanceType::CONTROL->value
+        // ];
 
-    // return ApiResponse::success([
-    //     'productBarcode' => $first->Matricola ?? '',
-    //     'productCodice' => $first->CodiceProdotto ?? '',
-    //     'productDescription' => $product?->description ?? '',
-    //     'clientName' => $first->RagioneSociale ?? '',
-    //     'clientAddress' => trim("{$first->Indirizzo} {$first->Localita} ({$first->Provincia})"),
-    //     'productBarcodeHistory' => $activities->map(function ($row) use ($maintenanceType) {
-    //         return [
-    //             'maintenanceType' => $maintenanceType[$row->GruppoAttivita] ?? '',
-    //             'maintenanceDate' => Carbon::parse($row->Data)->format('d/m/Y'),
-    //         ];
-    //     }),
-    // ]);
+        // return ApiResponse::success([
+        //     'productBarcode' => $first->Matricola ?? '',
+        //     'productCodice' => $first->CodiceProdotto ?? '',
+        //     'productDescription' => $product?->description ?? '',
+        //     'clientName' => $first->RagioneSociale ?? '',
+        //     'clientAddress' => trim("{$first->Indirizzo} {$first->Localita} ({$first->Provincia})"),
+        //     'productBarcodeHistory' => $activities->map(function ($row) use ($maintenanceType) {
+        //         return [
+        //             'maintenanceType' => $maintenanceType[$row->GruppoAttivita] ?? '',
+        //             'maintenanceDate' => Carbon::parse($row->Data)->format('d/m/Y'),
+        //         ];
+        //     }),
+        // ]);
     }
 
 

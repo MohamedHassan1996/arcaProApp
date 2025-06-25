@@ -22,7 +22,7 @@ class PeriodicMaintenanceStatsController extends Controller implements HasMiddle
     public function index(Request $request)
     {
         $monthsOfPeriodicMaintenance = 3;
-        $monthsOfControlledMaintenance = 5;
+        $monthsOfControlledMaintenance = 6;
         $filters = $request->filter ?? [];
 
         $now = now();
