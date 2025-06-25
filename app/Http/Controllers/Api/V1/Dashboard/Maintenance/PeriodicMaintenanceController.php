@@ -26,128 +26,242 @@ class PeriodicMaintenanceController extends Controller implements HasMiddleware
         ];
     }
 
+    // public function index(Request $request)
+    // {
+    //     $monthsOfPeriodicMaintenance = 3;
+    //     $monthsOfControlledMaintenance = 6;
+
+    //     $filters = $request->filter ?? [];
+
+    //     $startAt = isset($filters['startAt']) ? \Carbon\Carbon::parse($filters['startAt'])->startOfDay() : null;
+    //     $endAt = isset($filters['endAt']) ? \Carbon\Carbon::parse($filters['endAt'])->endOfDay() : null;
+    //     $now = now();
+
+    //     // Step 1: Get all relevant barcodes, grouped and filtered
+    //     $reportProductBarcodes = ReportProductBarcode::select(
+    //             'id', 'product_barcode', 'created_at', 'maintenance_report_id', 'maintenance_type'
+    //         )
+    //         ->orderByDesc('created_at')
+    //         ->when($filters['maintenanceType'] ?? null, function ($query, $maintenanceType) {
+    //             if ($maintenanceType == 1) {
+    //                 $query->whereIn('maintenance_type', [0, 1]); // MAINTENANCE or INSTALLATION
+    //             } else {
+    //                 $query->where('maintenance_type', $maintenanceType);
+    //             }
+    //         })
+    //         ->get()
+    //         ->groupBy('product_barcode')
+    //         ->map(function ($group) {
+    //             $control = $group->firstWhere('maintenance_type', MaintenanceType::CONTROL->value);
+    //             $maintenance = $group->firstWhere('maintenance_type', MaintenanceType::MAINTANANCE->value)
+    //                 ?? $group->firstWhere('maintenance_type', MaintenanceType::INSTALLATION->value);
+
+    //             return collect([$maintenance, $control])->filter(); // Remove nulls
+    //         })
+    //         ->flatten(1)
+    //         ->values();
+
+
+
+    //     // Step 2: Apply logic to calculate next dates, and filter
+    //     $periodicMaintenances = [];
+
+    //     foreach ($reportProductBarcodes as $reportProductBarcode) {
+    //         $maintenanceType = $reportProductBarcode->maintenance_type;
+
+    //         $nextMaintenanceDate = null;
+    //         $typeValue = null;
+
+    //         if (in_array($maintenanceType, [MaintenanceType::MAINTANANCE, MaintenanceType::INSTALLATION])) {
+    //             $nextMaintenanceDate = $reportProductBarcode->created_at->copy()->addMonths($monthsOfPeriodicMaintenance);
+    //             $typeValue = MaintenanceType::MAINTANANCE->value;
+
+
+    //         } elseif ($maintenanceType === MaintenanceType::CONTROL) {
+    //             $nextMaintenanceDate = $reportProductBarcode->created_at->copy()->addMonths($monthsOfControlledMaintenance);
+    //             $typeValue = MaintenanceType::CONTROL->value;
+    //         }
+    //         // Apply startAt and endAt filters
+    //         if (
+    //             ($startAt && $nextMaintenanceDate->lt($startAt)) ||
+    //             ($endAt && $nextMaintenanceDate->gt($endAt))
+    //         ) {
+    //             continue;
+    //         }
+    //         // Apply endedMaintenance filter
+    //         $isExpired = $nextMaintenanceDate->lessThanOrEqualTo($now);
+    //         $endedFilter = $filters['endedMaintenance'] ?? null;
+
+    //         if (
+    //             ($endedFilter === "1" && !$isExpired) ||
+    //             ($endedFilter === "0" && $isExpired)
+    //         ) {
+    //             continue;
+    //         }
+
+    //         // Get related client info
+    //         $report = MaintenanceReport::find($reportProductBarcode->maintenance_report_id);
+    //         $maintenance = Maintenance::with('anagraphic')->where('guid', $report->maintenance_guid)->first();
+    //         $address = AnagraphicAddress::where('guid', $maintenance->anagraphic_address_guid)->first();
+    //         $addressFormatted = $address->address.' '.$address->cap.' '.$address->city.' ('.$address->province.')';
+
+
+    //         $reportHistory = ReportProductBarcode::where('product_barcode', $reportProductBarcode->product_barcode)->orderBy('created_at', 'asc')->get();
+
+    //         $maintenanceHistory = [];
+
+    //         foreach ($reportHistory as $key => $reportHistoryItem) {
+    //             $maintenanceHistory[] = [
+    //                 'maintenanceType' => $reportHistoryItem->maintenance_type,
+    //                 'maintenanceDate' => $reportHistoryItem->created_at->format('d/m/Y'),
+    //             ];
+    //         }
+
+    //         // Calculate color status
+    //         $statusColor = 0; // default to expired
+    //         if ($nextMaintenanceDate->greaterThanOrEqualTo($now)) {
+    //             $statusColor = $nextMaintenanceDate->lessThanOrEqualTo($now->copy()->addMonth()) ? 1 : 2;
+    //         }
+
+    //         $reportProductBarcodeInstallation = ReportProductBarcode::where('product_barcode', $reportProductBarcode->product_barcode)
+    //             ->where('maintenance_type', MaintenanceType::INSTALLATION->value)->first();
+
+    //         $periodicMaintenances[] = [
+    //             'maintenanceType' => $typeValue,
+    //             'productBarcode' => $reportProductBarcode->product_barcode,
+    //             'productCode' => "",
+    //             'productDescription' => "",
+    //             'maintenanceDate' => $nextMaintenanceDate->format('d/m/Y'),
+    //             'clientName' => $maintenance?->anagraphic?->regione_sociale ?? '',
+    //             'clientAddress' => $addressFormatted,
+    //             'statusColor' => $statusColor,
+    //             'installationDate' => $reportProductBarcodeInstallation ? $reportProductBarcodeInstallation->created_at->format('d/m/Y') : '',
+    //             'maintenanceHistory' => $maintenanceHistory
+    //         ];
+    //     }
+
+    //     // Output the result (or return as response)
+
+
+    //     return ApiResponse::success(new AllPeriodicMaintenanceCollection(
+    //         PaginateCollection::paginate(collect($periodicMaintenances), $request->pageSize ?? 10000)
+    //     ));
+
+    // }
+
+
     public function index(Request $request)
-    {
-        $monthsOfPeriodicMaintenance = 3;
-        $monthsOfControlledMaintenance = 6;
+{
+    $monthsOfPeriodicMaintenance = 3;
+    $monthsOfControlledMaintenance = 6;
 
-        $filters = $request->filter ?? [];
+    $filters = $request->filter ?? [];
 
-        $startAt = isset($filters['startAt']) ? \Carbon\Carbon::parse($filters['startAt'])->startOfDay() : null;
-        $endAt = isset($filters['endAt']) ? \Carbon\Carbon::parse($filters['endAt'])->endOfDay() : null;
-        $now = now();
+    $now = now();
+    $nextMonth = $now->copy()->addMonth();
 
-        // Step 1: Get all relevant barcodes, grouped and filtered
-        $reportProductBarcodes = ReportProductBarcode::select(
-                'id', 'product_barcode', 'created_at', 'maintenance_report_id', 'maintenance_type'
-            )
-            ->orderByDesc('created_at')
-            ->when($filters['maintenanceType'] ?? null, function ($query, $maintenanceType) {
-                if ($maintenanceType == 1) {
-                    $query->whereIn('maintenance_type', [0, 1]); // MAINTENANCE or INSTALLATION
-                } else {
-                    $query->where('maintenance_type', $maintenanceType);
-                }
-            })
-            ->get()
-            ->groupBy('product_barcode')
-            ->map(function ($group) {
-                $control = $group->firstWhere('maintenance_type', MaintenanceType::CONTROL->value);
-                $maintenance = $group->firstWhere('maintenance_type', MaintenanceType::MAINTANANCE->value)
-                    ?? $group->firstWhere('maintenance_type', MaintenanceType::INSTALLATION->value);
+    $startAt = isset($filters['startAt']) ? Carbon::parse($filters['startAt'])->startOfDay() : null;
+    $endAt = isset($filters['endAt']) ? Carbon::parse($filters['endAt'])->endOfDay() : null;
+    $endedFilter = $filters['endedMaintenance'] ?? null;
 
-                return collect([$maintenance, $control])->filter(); // Remove nulls
-            })
-            ->flatten(1)
-            ->values();
-
-
-
-        // Step 2: Apply logic to calculate next dates, and filter
-        $periodicMaintenances = [];
-
-        foreach ($reportProductBarcodes as $reportProductBarcode) {
-            $maintenanceType = $reportProductBarcode->maintenance_type;
-
-            $nextMaintenanceDate = null;
-            $typeValue = null;
-
-            if (in_array($maintenanceType, [MaintenanceType::MAINTANANCE, MaintenanceType::INSTALLATION])) {
-                $nextMaintenanceDate = $reportProductBarcode->created_at->copy()->addMonths($monthsOfPeriodicMaintenance);
-                $typeValue = MaintenanceType::MAINTANANCE->value;
-
-
-            } elseif ($maintenanceType === MaintenanceType::CONTROL) {
-                $nextMaintenanceDate = $reportProductBarcode->created_at->copy()->addMonths($monthsOfControlledMaintenance);
-                $typeValue = MaintenanceType::CONTROL->value;
+    // Step 1: Get latest maintenance or control for each barcode
+    $reportProductBarcodes = ReportProductBarcode::select('id', 'product_barcode', 'created_at', 'maintenance_report_id', 'maintenance_type')
+        ->orderByDesc('created_at')
+        ->when($filters['maintenanceType'] ?? null, function ($query, $maintenanceType) {
+            if ($maintenanceType == 1) {
+                $query->whereIn('maintenance_type', [0, 1]); // Maintenance or Installation
+            } else {
+                $query->where('maintenance_type', $maintenanceType);
             }
-            // Apply startAt and endAt filters
-            if (
-                ($startAt && $nextMaintenanceDate->lt($startAt)) ||
-                ($endAt && $nextMaintenanceDate->gt($endAt))
-            ) {
-                continue;
-            }
-            // Apply endedMaintenance filter
-            $isExpired = $nextMaintenanceDate->lessThanOrEqualTo($now);
-            $endedFilter = $filters['endedMaintenance'] ?? null;
+        })
+        ->get()
+        ->groupBy('product_barcode')
+        ->map(function ($group) {
+            $control = $group->firstWhere('maintenance_type', MaintenanceType::CONTROL->value);
+            $maintenance = $group->firstWhere('maintenance_type', MaintenanceType::MAINTANANCE->value)
+                ?? $group->firstWhere('maintenance_type', MaintenanceType::INSTALLATION->value);
+            return collect([$maintenance, $control])->filter();
+        })
+        ->flatten(1)
+        ->values();
 
-            if (
-                ($endedFilter === "1" && !$isExpired) ||
-                ($endedFilter === "0" && $isExpired)
-            ) {
-                continue;
-            }
+    // Step 2: Process each record
+    $periodicMaintenances = [];
 
-            // Get related client info
-            $report = MaintenanceReport::find($reportProductBarcode->maintenance_report_id);
-            $maintenance = Maintenance::with('anagraphic')->where('guid', $report->maintenance_guid)->first();
-            $address = AnagraphicAddress::where('guid', $maintenance->anagraphic_address_guid)->first();
-            $addressFormatted = $address->address.' '.$address->cap.' '.$address->city.' ('.$address->province.')';
+    foreach ($reportProductBarcodes as $record) {
+        $maintenanceType = $record->maintenance_type;
 
+        // Determine next due date
+        $nextDate = match ($maintenanceType) {
+            MaintenanceType::MAINTANANCE, MaintenanceType::INSTALLATION => $record->created_at->copy()->addMonths($monthsOfPeriodicMaintenance),
+            MaintenanceType::CONTROL => $record->created_at->copy()->addMonths($monthsOfControlledMaintenance),
+        };
 
-            $reportHistory = ReportProductBarcode::where('product_barcode', $reportProductBarcode->product_barcode)->orderBy('created_at', 'asc')->get();
-
-            $maintenanceHistory = [];
-
-            foreach ($reportHistory as $key => $reportHistoryItem) {
-                $maintenanceHistory[] = [
-                    'maintenanceType' => $reportHistoryItem->maintenance_type,
-                    'maintenanceDate' => $reportHistoryItem->created_at->format('d/m/Y'),
-                ];
-            }
-
-            // Calculate color status
-            $statusColor = 0; // default to expired
-            if ($nextMaintenanceDate->greaterThanOrEqualTo($now)) {
-                $statusColor = $nextMaintenanceDate->lessThanOrEqualTo($now->copy()->addMonth()) ? 1 : 2;
-            }
-
-            $reportProductBarcodeInstallation = ReportProductBarcode::where('product_barcode', $reportProductBarcode->product_barcode)
-                ->where('maintenance_type', MaintenanceType::INSTALLATION->value)->first();
-
-            $periodicMaintenances[] = [
-                'maintenanceType' => $typeValue,
-                'productBarcode' => $reportProductBarcode->product_barcode,
-                'productCode' => "",
-                'productDescription' => "",
-                'maintenanceDate' => $nextMaintenanceDate->format('d/m/Y'),
-                'clientName' => $maintenance?->anagraphic?->regione_sociale ?? '',
-                'clientAddress' => $addressFormatted,
-                'statusColor' => $statusColor,
-                'installationDate' => $reportProductBarcodeInstallation ? $reportProductBarcodeInstallation->created_at->format('d/m/Y') : '',
-                'maintenanceHistory' => $maintenanceHistory
-            ];
+        // Apply start/end filters
+        if (($startAt && $nextDate->lt($startAt)) || ($endAt && $nextDate->gt($endAt))) {
+            continue;
         }
 
-        // Output the result (or return as response)
+        $isExpired = $nextDate->lte($now);
 
+        // Filter by endedMaintenance
+        if ($endedFilter === "1" && !$isExpired) {
+            continue; // skip non-expired
+        }
 
-        return ApiResponse::success(new AllPeriodicMaintenanceCollection(
-            PaginateCollection::paginate(collect($periodicMaintenances), $request->pageSize ?? 10000)
-        ));
+        if ($endedFilter === "0" && ($isExpired || $nextDate->gt($nextMonth))) {
+            continue; // skip expired or too far in future
+        }
 
+        // Get related models
+        $report = MaintenanceReport::find($record->maintenance_report_id);
+        $maintenance = Maintenance::with('anagraphic')->where('guid', $report->maintenance_guid)->first();
+        $address = AnagraphicAddress::where('guid', $maintenance->anagraphic_address_guid)->first();
+        $addressFormatted = $address?->address . ' ' . $address?->cap . ' ' . $address?->city . ' (' . $address?->province . ')';
+
+        // Fetch full maintenance history for barcode
+        $history = ReportProductBarcode::where('product_barcode', $record->product_barcode)
+            ->orderBy('created_at')
+            ->get()
+            ->map(function ($entry) {
+                return [
+                    'maintenanceType' => $entry->maintenance_type,
+                    'maintenanceDate' => $entry->created_at->format('d/m/Y'),
+                ];
+            });
+
+        // Get installation date
+        $installation = ReportProductBarcode::where('product_barcode', $record->product_barcode)
+            ->where('maintenance_type', MaintenanceType::INSTALLATION->value)
+            ->first();
+
+        // Determine status color
+        $statusColor = 0; // expired
+        if ($nextDate->gt($now)) {
+            $statusColor = $nextDate->lte($nextMonth) ? 1 : 2;
+        }
+
+        // Build response item
+        $periodicMaintenances[] = [
+            'maintenanceType' => $maintenanceType,
+            'productBarcode' => $record->product_barcode,
+            'productCode' => '',
+            'productDescription' => '',
+            'maintenanceDate' => $nextDate->format('d/m/Y'),
+            'clientName' => $maintenance?->anagraphic?->regione_sociale ?? '',
+            'clientAddress' => $addressFormatted,
+            'statusColor' => $statusColor,
+            'installationDate' => $installation ? $installation->created_at->format('d/m/Y') : '',
+            'maintenanceHistory' => $history,
+        ];
     }
+
+    // Paginate and return
+    return ApiResponse::success(new AllPeriodicMaintenanceCollection(
+        PaginateCollection::paginate(collect($periodicMaintenances), $request->pageSize ?? 10000)
+    ));
+}
+
 
 
 }
