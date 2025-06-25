@@ -34,7 +34,7 @@ class AuthService
             }
 
             // // Revoke old tokens (optional)
-            $user->tokens()->delete();
+            //$user->tokens()->delete();
 
             // Generate a new token (DO NOT return it directly)
             $token = $user->createToken('auth_token')->plainTextToken;
