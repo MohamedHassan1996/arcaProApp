@@ -8,6 +8,6 @@ class ClientSelectService
 {
     public function getAllClients()
     {
-        return Anagraphic::where('codice_interno', 1)->all(['guid as value', 'ragione_sociale as label']);
+        return Anagraphic::where('fk_tanagrafica', 1)->get(['guid as value', 'regione_sociale as label']);
     }
 }
