@@ -56,9 +56,8 @@ class ProductMaintenanceHistoryController extends Controller implements HasMiddl
 
         return [
             'productBarcode' => $calendarEvent->product_barcode,
-            'productCode' => $clientProductBarcode->codice,
-            'productDescription' => trim($calendarEvent->description) . ' - ' . $calendarEvent->product_barcode,
-            'maintenanceDate' => $calendarEvent->start_at->format('d/m/Y'),
+            'productCodice' => $clientProductBarcode->codice,
+            'productDescription' => trim($calendarEvent->description),
             'clientName' => $client?->regione_sociale ?? '',
             'clientAddress' => $address
                 ? trim("{$address->address} {$address->city} ({$address->province})")
