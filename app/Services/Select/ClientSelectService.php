@@ -2,12 +2,12 @@
 
 namespace App\Services\Select;
 
-use App\Models\Client\Client;
+use App\Models\Anagraphic;
 
 class ClientSelectService
 {
     public function getAllClients()
     {
-        return Client::all(['id as value', 'ragione_sociale as label']);
+        return Anagraphic::where('codice_interno', 1)->all(['guid as value', 'ragione_sociale as label']);
     }
 }

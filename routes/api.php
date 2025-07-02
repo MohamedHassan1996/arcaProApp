@@ -74,4 +74,8 @@ Route::prefix('v1/')->group(function () {
         Route::post('', [MaintenanceRequestController::class, 'store']);
     });
 
+    Route::prefix('selects')->group(function(){
+        Route::get('', [SelectController::class, 'getSelects']);
+    });
+
 });

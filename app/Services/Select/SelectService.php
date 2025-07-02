@@ -3,8 +3,6 @@
 
 namespace App\Services\Select;
 
-use App\Services\Select\Charity\CharityCaseSelectService;
-use App\Services\Select\Charity\CharitySelectService;
 use App\Services\Select\Parameter\ParameterSelectService;
 
 class SelectService
@@ -57,7 +55,6 @@ class SelectService
             'users' => ['getAllUsers', UserSelectService::class],
             'clients' => ['getAllClients', ClientSelectService::class],
             'roles' => ['getAllRoles', RoleSelectService::class],
-            'permissions' => ['getAllPermissions', PermissionSelectService::class],
             'parameters' => ['getAllParameters', ParameterSelectService::class],
         ];
 
