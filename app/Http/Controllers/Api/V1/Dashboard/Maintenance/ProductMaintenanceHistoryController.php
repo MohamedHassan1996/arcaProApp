@@ -4,21 +4,16 @@ namespace App\Http\Controllers\Api\V1\Dashboard\Maintenance;
 
 use App\Enums\Maintenance\MaintenanceType;
 use App\Helpers\ApiResponse;
-use App\Models\ReportProductBarcode;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use App\Mail\MaintenanceRequestMail;
+use App\Models\Anagraphic;
 use App\Models\AnagraphicAddress;
-use App\Models\Maintenance;
-use App\Models\MaintenanceReport;
+use App\Models\CalendarEvent;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
-use function PHPSTORM_META\map;
 
 class ProductMaintenanceHistoryController extends Controller implements HasMiddleware
 {
@@ -32,76 +27,48 @@ class ProductMaintenanceHistoryController extends Controller implements HasMiddl
 
     public function index(Request $request)
     {
-        $productBarcode = $request->productBarcode;
+        $barcode = $request->productBarcode;
 
-        $productBarcodeHistory = ReportProductBarcode::where('product_barcode', $productBarcode)->get();
+        $clientProductBarcode = DB::connection('proMaintenances')->table('anagraphic_product_barcodes')->where('barcode', $barcode)->first();
 
-        if (!$productBarcodeHistory->isEmpty()) {
-
-            $report = MaintenanceReport::where('id', $productBarcodeHistory->first()->maintenance_report_id)->first();
-            $maintenance = Maintenance::where('guid', $report->maintenance_guid)->first();
-            $client = $maintenance->anagraphic;
-
-            $address = AnagraphicAddress::where('anagraphic_guid', $client->guid)->first();
-            $addressFormatted = $address->address . ' ' . $address->cap . ' ' . $address->city . ' (' . $address->province . ')';
-
-            $productBarcodeHistoryFormatted = $productBarcodeHistory->map(function ($item) {
-                return [
-                    'maintenanceType' => $item->maintenance_type,
-                    'maintenanceDate' => $item->created_at->format('d/m/Y'),
-                ];
-            })->toArray();
-
-
-            //$productBarcodeData = DB::connection('proMaintenances')->table('anagraphic_product_codes')->where('barcode', $request->productBarcode)->first();
-
-            return ApiResponse::success([
-                'productBarcode' => $productBarcode,
-                'productCodice' => $productBarcodeData?->codice??'', // fill if needed
-                'productDescription' => $productBarcodeData?->description??'', // fill if needed
-                'clientName' => $client->regione_sociale,
-                'clientAddress' => $addressFormatted,
-                'productBarcodeHistory' => $productBarcodeHistoryFormatted
-            ]);
+        if (!$clientProductBarcode) {
+            return ApiResponse::error('Product not found');
         }
 
-        // // Fallback: Get data from MySQL tables separately (no join)
-        // $activities = DB::table('arca_attivita')
-        //     ->where('Matricola', $productBarcode)
-        //     ->where('Effettuato', 1)
-        //     ->get();
+        $calendarEvent = CalendarEvent::where('product_barcode', $barcode)->first();
 
-        // if ($activities->isEmpty()) {
-        //     return ApiResponse::error('No data found for this barcode.', []);
-        // }
+        $installation = CalendarEvent::where('product_barcode', $barcode)
+            ->where('maintenance_type', MaintenanceType::INSTALLATION->value)
+            ->orderByDesc('start_at')
+            ->first();
 
-        // // Get the product info separately from proMaintenances
-        // $product = DB::connection('proMaintenances')
-        //     ->table('anagraphic_product_codes')
-        //     ->where('barcode', $productBarcode)
-        //     ->first();
+        $history = CalendarEvent::where('product_barcode', $barcode)
+            ->orderBy('start_at')
+            ->get()
+            ->map(fn($item) => [
+                'maintenanceType' => $item->maintenance_type,
+                'maintenanceDate' => $item->start_at->format('d/m/Y'),
+            ])
+            ->toArray();
 
-        // $first = $activities->first();
+        $client = Anagraphic::where('guid', $calendarEvent->client_guid)->first();
+        $address = AnagraphicAddress::where('anagraphic_guid', $calendarEvent->client_guid)->first();
 
-        // $maintenanceType = [
-        //     'MANUTENZIONE' => MaintenanceType::MAINTANANCE->value,
-        //     'INSTALLAZIONE' => MaintenanceType::INSTALLATION->value,
-        //     'CONTROLLO' => MaintenanceType::CONTROL->value
-        // ];
+        return [
+            'maintenanceType' => $calendarEvent->maintenance_type,
+            'productBarcode' => $calendarEvent->product_barcode,
+            'productCode' => $clientProductBarcode->codice,
+            'productDescription' => trim($calendarEvent->description) . ' - ' . $calendarEvent->product_barcode,
+            'maintenanceDate' => $calendarEvent->start_at->format('d/m/Y'),
+            'clientName' => $client?->regione_sociale ?? '',
+            'clientAddress' => $address
+                ? trim("{$address->address} {$address->city} ({$address->province})")
+                : '',
+            'installationDate' => $installation ? Carbon::parse($installation->start_at)->format('d/m/Y') : '',
+            'productBarcodeHistory' => $history,
+        ];
 
-        // return ApiResponse::success([
-        //     'productBarcode' => $first->Matricola ?? '',
-        //     'productCodice' => $first->CodiceProdotto ?? '',
-        //     'productDescription' => $product?->description ?? '',
-        //     'clientName' => $first->RagioneSociale ?? '',
-        //     'clientAddress' => trim("{$first->Indirizzo} {$first->Localita} ({$first->Provincia})"),
-        //     'productBarcodeHistory' => $activities->map(function ($row) use ($maintenanceType) {
-        //         return [
-        //             'maintenanceType' => $maintenanceType[$row->GruppoAttivita] ?? '',
-        //             'maintenanceDate' => Carbon::parse($row->Data)->format('d/m/Y'),
-        //         ];
-        //     }),
-        // ]);
+
     }
 
 

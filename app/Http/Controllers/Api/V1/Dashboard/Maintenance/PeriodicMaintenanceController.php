@@ -7,14 +7,18 @@ use App\Helpers\ApiResponse;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PeriodicMaintenance\AllPeriodicMaintenanceCollection;
+use App\Models\Anagraphic;
 use App\Models\AnagraphicAddress;
+use App\Models\CalendarEvent;
 use App\Models\Maintenance;
 use App\Models\MaintenanceReport;
 use App\Models\ReportProductBarcode;
 use App\Utils\PaginateCollection;
+use Carbon\Carbon;
+use GuzzleHttp\Promise\Create;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
-
+use Illuminate\Support\Facades\DB;
 
 class PeriodicMaintenanceController extends Controller implements HasMiddleware
 {
@@ -25,243 +29,422 @@ class PeriodicMaintenanceController extends Controller implements HasMiddleware
             new Middleware('auth:api'),
         ];
     }
-
-    // public function index(Request $request)
+    //     public function index(Request $request)
     // {
-    //     $monthsOfPeriodicMaintenance = 3;
-    //     $monthsOfControlledMaintenance = 6;
 
     //     $filters = $request->filter ?? [];
 
-    //     $startAt = isset($filters['startAt']) ? \Carbon\Carbon::parse($filters['startAt'])->startOfDay() : null;
-    //     $endAt = isset($filters['endAt']) ? \Carbon\Carbon::parse($filters['endAt'])->endOfDay() : null;
     //     $now = now();
+    //     $nextMonth = $now->copy()->addMonth();
 
-    //     // Step 1: Get all relevant barcodes, grouped and filtered
-    //     $reportProductBarcodes = ReportProductBarcode::select(
-    //             'id', 'product_barcode', 'created_at', 'maintenance_report_id', 'maintenance_type'
-    //         )
-    //         ->orderByDesc('created_at')
-    //         ->when($filters['maintenanceType'] ?? null, function ($query, $maintenanceType) {
-    //             if ($maintenanceType == 1) {
-    //                 $query->whereIn('maintenance_type', [0, 1]); // MAINTENANCE or INSTALLATION
-    //             } else {
-    //                 $query->where('maintenance_type', $maintenanceType);
-    //             }
-    //         })
+    //     $startAt = isset($filters['startAt']) ? Carbon::parse($filters['startAt'])->startOfDay() : null;
+    //     $endAt = isset($filters['endAt']) ? Carbon::parse($filters['endAt'])->endOfDay() : null;
+    //     $endedFilter = $filters['endedMaintenance'] ?? null;
+
+    //     // Step 1: Get all latest calendar events for each type
+    //     $events = DB::table('calendar_events')
+    //         ->selectRaw('*, ROW_NUMBER() OVER (PARTITION BY product_barcode, maintenance_type ORDER BY start_at DESC) AS rn')
+    //         ->whereIn('maintenance_type', [
+    //             MaintenanceType::INSTALLATION->value,
+    //             MaintenanceType::MAINTANANCE->value,
+    //             MaintenanceType::CONTROL->value
+    //         ])
     //         ->get()
-    //         ->groupBy('product_barcode')
-    //         ->map(function ($group) {
-    //             $control = $group->firstWhere('maintenance_type', MaintenanceType::CONTROL->value);
-    //             $maintenance = $group->firstWhere('maintenance_type', MaintenanceType::MAINTANANCE->value)
-    //                 ?? $group->firstWhere('maintenance_type', MaintenanceType::INSTALLATION->value);
+    //         ->where('rn', 1); // only latest per type
 
-    //             return collect([$maintenance, $control])->filter(); // Remove nulls
-    //         })
-    //         ->flatten(1)
-    //         ->values();
+    //     // Step 2: Group by product_barcode
+    //     $grouped = $events->groupBy('product_barcode');
 
+    //     // Step 3: Load all clients and addresses once
+    //     $clientGuids = $events->pluck('client_guid')->unique()->filter();
+    //     $clients = Anagraphic::whereIn('guid', $clientGuids)->get()->keyBy('guid');
+    //     $addresses = AnagraphicAddress::whereIn('anagraphic_guid', $clientGuids)->get()->keyBy('anagraphic_guid');
 
+    //     $results = [];
 
-    //     // Step 2: Apply logic to calculate next dates, and filter
-    //     $periodicMaintenances = [];
+    //     foreach ($grouped as $barcode => $records) {
+    //         $installation = $records->firstWhere('maintenance_type', MaintenanceType::INSTALLATION->value);
+    //         $maintenance = $records->firstWhere('maintenance_type', MaintenanceType::MAINTANANCE->value);
+    //         $control = $records->firstWhere('maintenance_type', MaintenanceType::CONTROL->value);
 
-    //     foreach ($reportProductBarcodes as $reportProductBarcode) {
-    //         $maintenanceType = $reportProductBarcode->maintenance_type;
-
-    //         $nextMaintenanceDate = null;
-    //         $typeValue = null;
-
-    //         if (in_array($maintenanceType, [MaintenanceType::MAINTANANCE, MaintenanceType::INSTALLATION])) {
-    //             $nextMaintenanceDate = $reportProductBarcode->created_at->copy()->addMonths($monthsOfPeriodicMaintenance);
-    //             $typeValue = MaintenanceType::MAINTANANCE->value;
-
-
-    //         } elseif ($maintenanceType === MaintenanceType::CONTROL) {
-    //             $nextMaintenanceDate = $reportProductBarcode->created_at->copy()->addMonths($monthsOfControlledMaintenance);
-    //             $typeValue = MaintenanceType::CONTROL->value;
-    //         }
-    //         // Apply startAt and endAt filters
-    //         if (
-    //             ($startAt && $nextMaintenanceDate->lt($startAt)) ||
-    //             ($endAt && $nextMaintenanceDate->gt($endAt))
-    //         ) {
-    //             continue;
-    //         }
-    //         // Apply endedMaintenance filter
-    //         $isExpired = $nextMaintenanceDate->lessThanOrEqualTo($now);
-    //         $endedFilter = $filters['endedMaintenance'] ?? null;
-
-    //         if (
-    //             ($endedFilter === "1" && !$isExpired) ||
-    //             ($endedFilter === "0" && $isExpired)
-    //         ) {
-    //             continue;
+    //         // Periodic Maintenance
+    //         if ($maintenance || $installation) {
+    //             $results[] = $this->getNextMaintenanceDate(
+    //                 $maintenance ?? $installation,
+    //                 MaintenanceType::MAINTANANCE->value,
+    //                 3,
+    //                 $installation?->start_at,
+    //                 $clients,
+    //                 $addresses
+    //             );
     //         }
 
-    //         // Get related client info
-    //         $report = MaintenanceReport::find($reportProductBarcode->maintenance_report_id);
-    //         $maintenance = Maintenance::with('anagraphic')->where('guid', $report->maintenance_guid)->first();
-    //         $address = AnagraphicAddress::where('guid', $maintenance->anagraphic_address_guid)->first();
-    //         $addressFormatted = $address->address.' '.$address->cap.' '.$address->city.' ('.$address->province.')';
-
-
-    //         $reportHistory = ReportProductBarcode::where('product_barcode', $reportProductBarcode->product_barcode)->orderBy('created_at', 'asc')->get();
-
-    //         $maintenanceHistory = [];
-
-    //         foreach ($reportHistory as $key => $reportHistoryItem) {
-    //             $maintenanceHistory[] = [
-    //                 'maintenanceType' => $reportHistoryItem->maintenance_type,
-    //                 'maintenanceDate' => $reportHistoryItem->created_at->format('d/m/Y'),
-    //             ];
+    //         // Control Maintenance
+    //         if ($control || $installation) {
+    //             $results[] = $this->getNextMaintenanceDate(
+    //                 $control ?? $installation,
+    //                 MaintenanceType::CONTROL->value,
+    //                 6,
+    //                 $installation?->start_at,
+    //                 $clients,
+    //                 $addresses
+    //             );
     //         }
-
-    //         // Calculate color status
-    //         $statusColor = 0; // default to expired
-    //         if ($nextMaintenanceDate->greaterThanOrEqualTo($now)) {
-    //             $statusColor = $nextMaintenanceDate->lessThanOrEqualTo($now->copy()->addMonth()) ? 1 : 2;
-    //         }
-
-    //         $reportProductBarcodeInstallation = ReportProductBarcode::where('product_barcode', $reportProductBarcode->product_barcode)
-    //             ->where('maintenance_type', MaintenanceType::INSTALLATION->value)->first();
-
-    //         $periodicMaintenances[] = [
-    //             'maintenanceType' => $typeValue,
-    //             'productBarcode' => $reportProductBarcode->product_barcode,
-    //             'productCode' => "",
-    //             'productDescription' => "",
-    //             'maintenanceDate' => $nextMaintenanceDate->format('d/m/Y'),
-    //             'clientName' => $maintenance?->anagraphic?->regione_sociale ?? '',
-    //             'clientAddress' => $addressFormatted,
-    //             'statusColor' => $statusColor,
-    //             'installationDate' => $reportProductBarcodeInstallation ? $reportProductBarcodeInstallation->created_at->format('d/m/Y') : '',
-    //             'maintenanceHistory' => $maintenanceHistory
-    //         ];
     //     }
 
-    //     // Output the result (or return as response)
-
-
-    //     return ApiResponse::success(new AllPeriodicMaintenanceCollection(
-    //         PaginateCollection::paginate(collect($periodicMaintenances), $request->pageSize ?? 10000)
-    //     ));
-
+    //     return ApiResponse::success(
+    //         new AllPeriodicMaintenanceCollection(
+    //             PaginateCollection::paginate(collect($results), $request->pageSize ?? 10000)
+    //         )
+    //     );
     // }
 
 
-    public function index(Request $request)
-{
-    $monthsOfPeriodicMaintenance = 3;
-    $monthsOfControlledMaintenance = 6;
+    // private function getNextMaintenanceDate($maintenance, $maintenanceType, $intervalMonths, $installDate = null, $clients = [], $addresses = [])
+    // {
+    //     $now = now();
+    //     $nextMonth = $now->copy()->addMonth();
+    //     $startDate = Carbon::parse($maintenance->start_at);
 
+    //     if ($maintenance->is_done == 1) {
+    //         $startDate = Carbon::parse($maintenance->end_at)
+    //             ->addMonths($intervalMonths)
+    //             ->setTime(0, 0, 0);
+    //     }
+
+    //     $statusColor = 0; // expired
+    //     if ($startDate->gt($now)) {
+    //         $statusColor = $startDate->lte($nextMonth) ? 1 : 2;
+    //     }
+
+    //     // History (you can cache this too if needed)
+    //     $history = CalendarEvent::where('product_barcode', $maintenance->product_barcode)
+    //         ->orderBy('start_at')
+    //         ->get()
+    //         ->map(fn($item) => [
+    //             'maintenanceType' => $item->maintenance_type,
+    //             'maintenanceDate' => $item->start_at->format('d/m/Y'),
+    //         ])
+    //         ->toArray();
+
+    //     $client = $clients[$maintenance->client_guid] ?? null;
+    //     $address = $addresses[$maintenance->client_guid] ?? null;
+
+    //     return [
+    //         'maintenanceType' => $maintenanceType,
+    //         'productBarcode' => $maintenance->product_barcode,
+    //         'productCode' => $maintenance->product_barcode,
+    //         'productDescription' => trim($maintenance->description) . ' - ' . $maintenance->product_barcode,
+    //         'maintenanceDate' => $startDate->format('d/m/Y'),
+    //         'clientName' => $client?->regione_sociale ?? '',
+    //         'clientAddress' => $address
+    //             ? trim("{$address->address} {$address->city} ({$address->province})")
+    //             : '',
+    //         'statusColor' => $statusColor,
+    //         'installationDate' => $installDate
+    //             ? Carbon::parse($installDate)->format('d/m/Y')
+    //             : '',
+    //         'maintenanceHistory' => $history,
+    //     ];
+    // }
+
+//     public function index(Request $request)
+// {
+//     $filters = $request->filter ?? [];
+
+//     $now = now();
+//     $nextMonth = $now->copy()->addMonth();
+
+//     $endedFilter = $filters['endedMaintenance'] ?? null;
+//     $maintenanceType = $filters['maintenanceType'] ?? null;
+
+//     // Base query with latest records by product_barcode and maintenance_type
+//     $baseQuery = DB::table('calendar_events')
+//         ->selectRaw('
+//             *,
+//             ROW_NUMBER() OVER (PARTITION BY product_barcode, maintenance_type ORDER BY start_at DESC) AS rn
+//         ')
+//         ->whereIn('maintenance_type', [
+//             MaintenanceType::INSTALLATION->value,
+//             MaintenanceType::MAINTANANCE->value,
+//             MaintenanceType::CONTROL->value,
+//         ]);
+
+//     dd($endedFilter);
+//     // Convert to collection to simulate SQL window function filtering
+//     $events = $baseQuery->get()->where('rn', 1);
+
+//     // Preload clients and addresses
+//     $clientGuids = $events->pluck('client_guid')->unique()->filter();
+//     $clients = Anagraphic::whereIn('guid', $clientGuids)->get()->keyBy('guid');
+//     $addresses = AnagraphicAddress::whereIn('anagraphic_guid', $clientGuids)->get()->keyBy('anagraphic_guid');
+
+//     $results = [];
+
+//     foreach ($events->groupBy('product_barcode') as $barcode => $records) {
+//         $installation = $records->firstWhere('maintenance_type', MaintenanceType::INSTALLATION->value);
+//         $maintenance = $records->firstWhere('maintenance_type', MaintenanceType::MAINTANANCE->value);
+//         $control = $records->firstWhere('maintenance_type', MaintenanceType::CONTROL->value);
+
+//         // Prepare next dates
+//         if ($maintenance || $installation) {
+//             $maintenanceResult = $this->getNextMaintenanceDate(
+//                 $maintenance ?? $installation,
+//                 MaintenanceType::MAINTANANCE->value,
+//                 3,
+//                 $installation?->start_at,
+//                 $clients,
+//                 $addresses
+//             );
+
+//             if ($this->filterByEndCondition($maintenanceResult['maintenanceDate'], $endedFilter, $now, $nextMonth)) {
+//                 $results[] = $maintenanceResult;
+//             }
+//         }
+
+//         if ($control || $installation) {
+//             $controlResult = $this->getNextMaintenanceDate(
+//                 $control ?? $installation,
+//                 MaintenanceType::CONTROL->value,
+//                 6,
+//                 $installation?->start_at,
+//                 $clients,
+//                 $addresses
+//             );
+
+//             if ($this->filterByEndCondition($controlResult['maintenanceDate'], $endedFilter, $now, $nextMonth)) {
+//                 $results[] = $controlResult;
+//             }
+//         }
+//     }
+
+//     dd(count($results));
+
+//     return ApiResponse::success(
+//         new AllPeriodicMaintenanceCollection(
+//             PaginateCollection::paginate(collect($results), $request->pageSize ?? 10000)
+//         )
+//     );
+// }
+
+// private function filterByEndCondition($maintenanceDate, $endedFilter, $now, $nextMonth)
+// {
+//     $parsedDate = Carbon::createFromFormat('d/m/Y', $maintenanceDate);
+
+//     if ($endedFilter === '1') {
+//         return $parsedDate->lt($now);
+//     }
+
+//     if ($endedFilter === '0') {
+//         return $parsedDate->gte($now) && $parsedDate->lte($nextMonth);
+//     }
+
+//     return true; // No filter
+// }
+
+
+//     private function getNextMaintenanceDate($maintenance, $maintenanceType, $intervalMonths, $installDate = null, $clients = [], $addresses = [])
+//     {
+//         $now = now();
+//         $nextMonth = $now->copy()->addMonth();
+//         $startDate = Carbon::parse($maintenance->start_at);
+
+//         if ($maintenance->is_done == 1) {
+//             $startDate = Carbon::parse($maintenance->end_at)
+//                 ->addMonths($intervalMonths)
+//                 ->setTime(0, 0, 0);
+//         }
+
+//         $statusColor = 0; // expired
+//         if ($startDate->gt($now)) {
+//             $statusColor = $startDate->lte($nextMonth) ? 1 : 2;
+//         }
+
+//         // History (you can cache this too if needed)
+//         $history = CalendarEvent::where('product_barcode', $maintenance->product_barcode)
+//             ->orderBy('start_at')
+//             ->get()
+//             ->map(fn($item) => [
+//                 'maintenanceType' => $item->maintenance_type,
+//                 'maintenanceDate' => $item->start_at->format('d/m/Y'),
+//             ])
+//             ->toArray();
+
+//         $client = $clients[$maintenance->client_guid] ?? null;
+//         $address = $addresses[$maintenance->client_guid] ?? null;
+
+//         return [
+//             'maintenanceType' => $maintenanceType,
+//             'productBarcode' => $maintenance->product_barcode,
+//             'productCode' => $maintenance->product_barcode,
+//             'productDescription' => trim($maintenance->description) . ' - ' . $maintenance->product_barcode,
+//             'maintenanceDate' => $startDate->format('d/m/Y'),
+//             'clientName' => $client?->regione_sociale ?? '',
+//             'clientAddress' => $address
+//                 ? trim("{$address->address} {$address->city} ({$address->province})")
+//                 : '',
+//             'statusColor' => $statusColor,
+//             'installationDate' => $installDate
+//                 ? Carbon::parse($installDate)->format('d/m/Y')
+//                 : '',
+//             'maintenanceHistory' => $history,
+//         ];
+//     }
+
+
+public function index(Request $request)
+{
     $filters = $request->filter ?? [];
 
     $now = now();
     $nextMonth = $now->copy()->addMonth();
 
-    $startAt = isset($filters['startAt']) ? Carbon::parse($filters['startAt'])->startOfDay() : null;
-    $endAt = isset($filters['endAt']) ? Carbon::parse($filters['endAt'])->endOfDay() : null;
-    $endedFilter = $filters['endedMaintenance'] ?? null;
+    $maintenanceTypeFilter = $filters['maintenanceType'] ?? null; // 1 or 2
+    $endedFilter = $filters['endedMaintenance'] ?? null;          // 1 or 0
+    $clientGuid = $filters['clientGuid'] ?? null;
 
-    // Step 1: Get latest maintenance or control for each barcode
-    $reportProductBarcodes = ReportProductBarcode::select('id', 'product_barcode', 'created_at', 'maintenance_report_id', 'maintenance_type')
-        ->orderByDesc('created_at')
-        ->when($filters['maintenanceType'] ?? null, function ($query, $maintenanceType) {
-            if ($maintenanceType == 1) {
-                $query->whereIn('maintenance_type', [0, 1]); // Maintenance or Installation
-            } else {
-                $query->where('maintenance_type', $maintenanceType);
-            }
-        })
-        ->get()
-        ->groupBy('product_barcode')
-        ->map(function ($group) {
-            $control = $group->firstWhere('maintenance_type', MaintenanceType::CONTROL->value);
-            $maintenance = $group->firstWhere('maintenance_type', MaintenanceType::MAINTANANCE->value)
-                ?? $group->firstWhere('maintenance_type', MaintenanceType::INSTALLATION->value);
-            return collect([$maintenance, $control])->filter();
-        })
-        ->flatten(1)
-        ->values();
+    $startAtFilter = isset($filters['startAt']) ? Carbon::parse($filters['startAt'])->startOfDay() : null;
+    $endAtFilter = isset($filters['endAt']) ? Carbon::parse($filters['endAt'])->endOfDay() : null;
 
-    // Step 2: Process each record
-    $periodicMaintenances = [];
+    $barcodes = CalendarEvent::distinct('product_barcode')->when(
+        $clientGuid,
+        fn($query) => $query->where('client_guid', $clientGuid)
+    )->pluck('product_barcode');
 
-    foreach ($reportProductBarcodes as $record) {
-        $maintenanceType = $record->maintenance_type;
+    $results = [];
 
-        // Determine next due date
-        $nextDate = match ($maintenanceType) {
-            MaintenanceType::MAINTANANCE, MaintenanceType::INSTALLATION => $record->created_at->copy()->addMonths($monthsOfPeriodicMaintenance),
-            MaintenanceType::CONTROL => $record->created_at->copy()->addMonths($monthsOfControlledMaintenance),
-        };
-
-        // Apply start/end filters
-        if (($startAt && $nextDate->lt($startAt)) || ($endAt && $nextDate->gt($endAt))) {
-            continue;
-        }
-
-        $isExpired = $nextDate->lte($now);
-
-        // Filter by endedMaintenance
-        if ($endedFilter === "1" && !$isExpired) {
-            continue; // skip non-expired
-        }
-
-        if ($endedFilter === "0" && ($isExpired || $nextDate->gt($nextMonth))) {
-            continue; // skip expired or too far in future
-        }
-
-        // Get related models
-        $report = MaintenanceReport::find($record->maintenance_report_id);
-        $maintenance = Maintenance::with('anagraphic')->where('guid', $report->maintenance_guid)->first();
-        $address = AnagraphicAddress::where('guid', $maintenance->anagraphic_address_guid)->first();
-        $addressFormatted = $address?->address . ' ' . $address?->cap . ' ' . $address?->city . ' (' . $address?->province . ')';
-
-        // Fetch full maintenance history for barcode
-        $history = ReportProductBarcode::where('product_barcode', $record->product_barcode)
-            ->orderBy('created_at')
-            ->get()
-            ->map(function ($entry) {
-                return [
-                    'maintenanceType' => $entry->maintenance_type,
-                    'maintenanceDate' => $entry->created_at->format('d/m/Y'),
-                ];
-            });
-
-        // Get installation date
-        $installation = ReportProductBarcode::where('product_barcode', $record->product_barcode)
+    foreach ($barcodes as $barcode) {
+        $installation = CalendarEvent::where('product_barcode', $barcode)
             ->where('maintenance_type', MaintenanceType::INSTALLATION->value)
+            ->orderByDesc('start_at')
             ->first();
 
-        // Determine status color
-        $statusColor = 0; // expired
-        if ($nextDate->gt($now)) {
-            $statusColor = $nextDate->lte($nextMonth) ? 1 : 2;
+        // MAINTANANCE
+        if ($maintenanceTypeFilter === null || $maintenanceTypeFilter == MaintenanceType::MAINTANANCE->value) {
+            $maintenance = CalendarEvent::where('product_barcode', $barcode)
+                ->where('maintenance_type', MaintenanceType::MAINTANANCE->value)
+                ->orderByDesc('start_at')
+                ->where('is_done', 0)
+                ->first();
+
+            if ($maintenance) {
+                $eventDate = $maintenance->start_at;
+
+                if (
+                    $this->passesDateFilters($eventDate, $startAtFilter, $endAtFilter) &&
+                    $this->passesEndedCondition($eventDate, $endedFilter)
+                ) {
+                    $results[] = $this->buildMaintenanceResult(
+                        $maintenance,
+                        MaintenanceType::MAINTANANCE->value,
+                        3,
+                        $installation
+                    );
+                }
+            }
         }
 
-        // Build response item
-        $periodicMaintenances[] = [
-            'maintenanceType' => $maintenanceType,
-            'productBarcode' => $record->product_barcode,
-            'productCode' => '',
-            'productDescription' => '',
-            'maintenanceDate' => $nextDate->format('d/m/Y'),
-            'clientName' => $maintenance?->anagraphic?->regione_sociale ?? '',
-            'clientAddress' => $addressFormatted,
-            'statusColor' => $statusColor,
-            'installationDate' => $installation ? $installation->created_at->format('d/m/Y') : '',
-            'maintenanceHistory' => $history,
-        ];
+        // CONTROL
+        if ($maintenanceTypeFilter === null || $maintenanceTypeFilter == MaintenanceType::CONTROL->value) {
+            $control = CalendarEvent::where('product_barcode', $barcode)
+                ->where('maintenance_type', MaintenanceType::CONTROL->value)
+                ->orderByDesc('start_at')
+                ->where('is_done', 0)
+                ->first();
+
+            if ($control) {
+                $eventDate = $control->start_at;
+
+                if (
+                    $this->passesDateFilters($eventDate, $startAtFilter, $endAtFilter) &&
+                    $this->passesEndedCondition($eventDate, $endedFilter)
+                ) {
+                    $results[] = $this->buildMaintenanceResult(
+                        $control,
+                        MaintenanceType::CONTROL->value,
+                        6,
+                        $installation
+                    );
+                }
+            }
+        }
     }
 
-    // Paginate and return
-    return ApiResponse::success(new AllPeriodicMaintenanceCollection(
-        PaginateCollection::paginate(collect($periodicMaintenances), $request->pageSize ?? 10000)
-    ));
+    return ApiResponse::success(
+        new AllPeriodicMaintenanceCollection(
+            PaginateCollection::paginate(collect($results), $request->pageSize ?? 10000)
+        )
+    );
 }
 
+private function buildMaintenanceResult($event, $type, $intervalMonths, $installation = null)
+{
+    $now = now();
+    $nextMonth = $now->copy()->addMonth();
+
+    $startDate = Carbon::parse($event->start_at);
+
+    $statusColor = 0;
+    if ($startDate->gt($now)) {
+        $statusColor = $startDate->lte($nextMonth) ? 1 : 2;
+    }
+
+    $history = CalendarEvent::where('product_barcode', $event->product_barcode)
+        ->orderBy('start_at')
+        ->get()
+        ->map(fn($item) => [
+            'maintenanceType' => $item->maintenance_type,
+            'maintenanceDate' => $item->start_at->format('d/m/Y'),
+        ])
+        ->toArray();
+
+    $client = Anagraphic::where('guid', $event->client_guid)->first();
+    $address = AnagraphicAddress::where('anagraphic_guid', $event->client_guid)->first();
+
+    return [
+        'maintenanceType' => $type,
+        'productBarcode' => $event->product_barcode,
+        'productCode' => $event->product_barcode,
+        'productDescription' => trim($event->description) . ' - ' . $event->product_barcode,
+        'maintenanceDate' => $startDate->format('d/m/Y'),
+        'clientName' => $client?->regione_sociale ?? '',
+        'clientAddress' => $address
+            ? trim("{$address->address} {$address->city} ({$address->province})")
+            : '',
+        'statusColor' => $statusColor,
+        'installationDate' => $installation ? Carbon::parse($installation->start_at)->format('d/m/Y') : '',
+        'maintenanceHistory' => $history,
+    ];
+}
+
+private function passesDateFilters($date, $start = null, $end = null)
+{
+    $d = Carbon::parse($date);
+
+    if ($start && $d->lt($start)) {
+        return false;
+    }
+
+    if ($end && $d->gt($end)) {
+        return false;
+    }
+
+    return true;
+}
+
+private function passesEndedCondition($date, $endedFilter)
+{
+    if ($endedFilter === null) return true;
+
+    $d = Carbon::parse($date);
+    $now = now();
+    $nextMonth = $now->copy()->addMonth();
+
+    if ($endedFilter == 1) return $d->lt($now);              // expired
+    if ($endedFilter == 0) return $d->between($now, $nextMonth); // upcoming
+
+    return true;
+}
 
 
 }

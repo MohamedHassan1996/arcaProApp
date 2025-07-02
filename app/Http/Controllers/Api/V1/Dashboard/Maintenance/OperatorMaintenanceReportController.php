@@ -71,6 +71,7 @@ class OperatorMaintenanceReportController extends Controller implements HasMiddl
                     'product_codices' => $report['productCodices'],
                     'note' => $report['note'],
                     'path' => $path,
+                    'report_date' => $report['date']
                 ]);
 
                 $maintenance = Maintenance::where('guid', $report['maintenanceGuid'])->first();
@@ -86,10 +87,10 @@ class OperatorMaintenanceReportController extends Controller implements HasMiddl
 
                     $nextMaintenanceDate = null;
                     if($reportProductBarcode->maintenance_type == MaintenanceType::MAINTANANCE || $reportProductBarcode->maintenance_type == MaintenanceType::INSTALLATION) {
-                        $nextMaintenanceDate = $reportProductBarcode->created_at->addMonths($monthsOfPeriodicMaintenance);
+                        $nextMaintenanceDate = $reportProductBarcode->report_date->addMonths($monthsOfPeriodicMaintenance);
 
                     }elseif($reportProductBarcode->maintenance_type == MaintenanceType::CONTROL) {
-                        $nextMaintenanceDate = $reportProductBarcode->created_at->addMonths($monthsOfControlledMaintenance);
+                        $nextMaintenanceDate = $reportProductBarcode->report_date->addMonths($monthsOfControlledMaintenance);
                     }
 
                     CalendarEvent::create([

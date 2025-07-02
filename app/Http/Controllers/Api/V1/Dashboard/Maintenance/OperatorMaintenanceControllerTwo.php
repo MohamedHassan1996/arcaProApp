@@ -147,17 +147,17 @@ class OperatorMaintenanceControllerTwo extends Controller implements HasMiddlewa
                     ->whereIn('guid', $mezzoGuids)
                     ->value('descriptions')
                 : "";
-$maintenanceDetails = DB::connection('proMaintenances')->table('maintenance_details')
-    ->leftJoin('parameter_values as intervento', 'maintenance_details.tipo_intervento_guid', '=', 'intervento.guid')
-    ->select(
-        'maintenance_details.*',
-        'intervento.parameter_value as intervento'
-    )
-    ->where('maintenance_guid', $maintenance->guid)
-    ->whereNull('maintenance_details.deleted_at')
-    ->get();
+        $maintenanceDetails = DB::connection('proMaintenances')->table('maintenance_details')
+            ->leftJoin('parameter_values as intervento', 'maintenance_details.tipo_intervento_guid', '=', 'intervento.guid')
+            ->select(
+                'maintenance_details.*',
+                'intervento.parameter_value as intervento'
+            )
+            ->where('maintenance_guid', $maintenance->guid)
+            ->whereNull('maintenance_details.deleted_at')
+            ->get();
 
-$detailsData = [];
+        $detailsData = [];
     $productBarCodes = [];
 
 foreach ($maintenanceDetails as $detail) {
@@ -165,7 +165,7 @@ foreach ($maintenanceDetails as $detail) {
     $productGuids = explode('##', $detail->product_guids ?? '');
 
     // Step 2: Get product codes from DB
-    $productCodes = DB::connection('proMaintenances')->table('products')
+    $productCodes = DB::connection('proMaintenances')->table('anagraphic_product_barcodes')
         ->whereIn('guid', $productGuids)
         ->pluck('codice')
         ->toArray();
@@ -174,8 +174,8 @@ foreach ($maintenanceDetails as $detail) {
 
     foreach($productCodes as $productCode){
         $detailProductBarCodes[] = [
-            'productGuid' => '',
-            'productBarCode' => ''
+            'productGuid' => $productCode->guid,
+            'productBarCode' => $productCode->barcode
         ];
     }
     // Step 3: Join codes or default to "-"
@@ -196,12 +196,11 @@ foreach ($maintenanceDetails as $detail) {
         'rifPosizione' => $detail->rif_pos,
         'dettagliLavoro' => $detail->dettagli_lavoro,
         'noteSpedizione' => $detail->note_spedizione,
-
     ];
 }
 
-$maintenance->details = $detailsData;
-    $maintenance->productBarCodes = $productBarCodes;
+            $maintenance->details = $detailsData;
+            $maintenance->productBarCodes = $productBarCodes;
 
                 // Optional: eager load brief maintenance details count or summary if needed
 
@@ -295,7 +294,9 @@ $maintenance->details = $detailsData;
             'attivita'     => $getParameterValues($detail->attivita_guids),
             'mezziOpera'   => $getParameterValues($detail->mezzi_opera_guids),
             'rifPosizione' => $detail->rif_pos,
+            'noteCantiere' => $getParameterValues($detail->note_cantiere_guids),
             'dettagliLavoro' => $detail->dettagli_lavoro,
+            'noteSpedizione' => $detail->note_spedizione,
         ];
     }
 

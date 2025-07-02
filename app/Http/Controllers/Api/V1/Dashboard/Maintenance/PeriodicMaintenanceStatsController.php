@@ -6,9 +6,13 @@ use App\Enums\Maintenance\MaintenanceType;
 use App\Helpers\ApiResponse;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Models\CalendarEvent;
 use App\Models\ReportProductBarcode;
+use Carbon\Carbon;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
+use Illuminate\Support\Facades\DB;
+
 class PeriodicMaintenanceStatsController extends Controller implements HasMiddleware
 {
 
@@ -21,68 +25,64 @@ class PeriodicMaintenanceStatsController extends Controller implements HasMiddle
 
     public function index(Request $request)
     {
-        $monthsOfPeriodicMaintenance = 3;
-        $monthsOfControlledMaintenance = 6;
-        $filters = $request->filter ?? [];
+        // $monthsOfPeriodicMaintenance = 3;
+        // $monthsOfControlledMaintenance = 6;
 
-        $now = now();
-        $inThirtyDays = now()->addDays(30);
+        //$filters = $request->filter ?? [];
 
-        // STEP 1: Get all latest per barcode (same as yours)
-        $reportProductBarcodes = ReportProductBarcode::select('id', 'product_barcode', 'created_at', 'maintenance_report_id', 'maintenance_type')
-            ->orderByDesc('created_at')
-            ->when($filters['maintenanceType'] ?? null, function ($query, $maintenanceType) {
-                if ($maintenanceType == 1) {
-                    $query->whereIn('maintenance_type', [0, 1]);
-                } else {
-                    $query->where('maintenance_type', $maintenanceType);
-                }
-            })
-            ->get()
-            ->groupBy('product_barcode')
-            ->map(function ($group) {
-                $control = $group->firstWhere('maintenance_type', 2);
-                $maintenanceOrInstall = $group->firstWhere('maintenance_type', 1) ?? $group->firstWhere('maintenance_type', 0);
-                return collect([$maintenanceOrInstall, $control])->filter();
-            })
-            ->flatten(1)
-            ->values();
+                // $startAt = isset($filters['startAt']) ? Carbon::parse($filters['startAt'])->startOfDay() : null;
+        // $endAt = isset($filters['endAt']) ? Carbon::parse($filters['endAt'])->endOfDay() : null;
+        // $endedFilter = $filters['endedMaintenance'] ?? null;
 
-        // STEP 2: Initialize counters
-        $totalCount = 0;
-        $expiredMaintenanceCount = 0;
-        $expiredControlCount = 0;
-        $upcomingMaintenanceCount = 0;
-        $upcomingControlCount = 0;
+        $now = now(config('app.timezone'));
+        $inThirtyDays = $now->copy()->addDays(30);
 
-        foreach ($reportProductBarcodes as $barcode) {
-            $totalCount++;
 
-            $nextDate = match ($barcode->maintenance_type) {
-                MaintenanceType::INSTALLATION, MaintenanceType::MAINTANANCE => $barcode->created_at->copy()->addMonths($monthsOfPeriodicMaintenance),
-                MaintenanceType::CONTROL => $barcode->created_at->copy()->addMonths($monthsOfControlledMaintenance),
-            };
+        $totalCount = CalendarEvent::whereIn('maintenance_type', [
+            MaintenanceType::MAINTANANCE->value,
+            MaintenanceType::CONTROL->value
+        ])->count('product_barcode');
 
-            // Expired
-            if ($nextDate->lessThanOrEqualTo($now)) {
-                if (in_array($barcode->maintenance_type, [MaintenanceType::INSTALLATION, MaintenanceType::MAINTANANCE])) {
-                    $expiredMaintenanceCount++;
-                } elseif ($barcode->maintenance_type === MaintenanceType::CONTROL) {
-                    $expiredControlCount++;
-                }
-            }
+        $expiredMaintenanceCount = CalendarEvent::where('maintenance_type', MaintenanceType::MAINTANANCE->value)->where('is_done', 0)->where('start_at', '<', $now)->count();
 
-            // Coming within 30 days
-            elseif ($nextDate->greaterThan($now) && $nextDate->lessThanOrEqualTo($inThirtyDays)) {
-                if (in_array($barcode->maintenance_type, [MaintenanceType::INSTALLATION, MaintenanceType::MAINTANANCE])) {
-                    $upcomingMaintenanceCount++;
-                } elseif ($barcode->maintenance_type === MaintenanceType::CONTROL) {
-                    $upcomingControlCount++;
-                }
-            }
-        }
+        $expiredControlCount = CalendarEvent::where('maintenance_type', MaintenanceType::CONTROL->value)->where('is_done', 0)->where('start_at', '<', $now)->count();
+        $upcomingMaintenanceCount = CalendarEvent::where('maintenance_type', MaintenanceType::MAINTANANCE->value)
+            ->where('is_done', 0)
+            ->whereBetween('start_at', [$now, $inThirtyDays])
+            ->count();
 
-        // Return or pass to view
+
+        $upcomingControlCount = CalendarEvent::select('product_barcode')
+            ->where('maintenance_type', MaintenanceType::CONTROL->value)
+            ->where('is_done', 0)
+            ->whereBetween('start_at', [$now, $inThirtyDays])
+            ->count();
+
+//         $upcomingControlCount = CalendarEvent::select('product_barcode')
+//     ->where('maintenance_type', MaintenanceType::MAINTANANCE->value)
+//     ->where('is_done', 0)
+//     ->whereBetween('start_at', [$now, $inThirtyDays])
+//     ->groupBy('product_barcode')
+//     ->havingRaw('COUNT(*) > 1')
+//     ->ddRawSql();
+
+//    dd($upcomingControlCount);
+
+// $toDelete = DB::select("
+//     SELECT id FROM (
+//         SELECT id,
+//                ROW_NUMBER() OVER (
+//                    PARTITION BY product_barcode, maintenance_type, start_at
+//                    ORDER BY id ASC
+//                ) AS rn
+//         FROM calendar_events
+//         WHERE maintenance_type = ?
+//           AND is_done = 0
+//     ) AS duplicates
+//     WHERE rn > 1
+// ", [MaintenanceType::MAINTANANCE->value]);
+
+
         return ApiResponse::success([
             'totalMaintenanceCount' => $totalCount,
             'expiredMaintenanceCount' => $expiredMaintenanceCount,
@@ -91,5 +91,4 @@ class PeriodicMaintenanceStatsController extends Controller implements HasMiddle
             'upcomingControlCount' => $upcomingControlCount,
         ]);
     }
-
 }

@@ -15,12 +15,16 @@ class CalendarEvent extends Model
         'is_all_day',
         'maintenance_type',
         'client_guid',
+        'product_barcode',
+        'is_done',
     ];
 
     protected function casts()
     {
         return [
             'maintenance_type' => MaintenanceType::class,
+            'start_at' => 'datetime',
+            'end_at' => 'datetime',
         ];
     }
 }
