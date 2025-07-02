@@ -165,7 +165,7 @@ foreach ($maintenanceDetails as $detail) {
     $productGuids = explode('##', $detail->product_guids ?? '');
 
     // Step 2: Get product codes from DB
-    $productCodes = DB::connection('proMaintenances')->table('anagraphic_product_barcodes')
+    $productCodes = DB::connection('proMaintenances')->table('anagraphic_product_codes')
         ->whereIn('guid', $productGuids)
         ->pluck('codice')
         ->toArray();
