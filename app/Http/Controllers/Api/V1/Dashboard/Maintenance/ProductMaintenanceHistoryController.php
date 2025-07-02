@@ -29,7 +29,7 @@ class ProductMaintenanceHistoryController extends Controller implements HasMiddl
     {
         $barcode = $request->productBarcode;
 
-        $clientProductBarcode = DB::connection('proMaintenances')->table('anagraphic_product_barcodes')->where('barcode', $barcode)->first();
+        $clientProductBarcode = DB::connection('proMaintenances')->table('anagraphic_product_codes')->where('barcode', $barcode)->first();
 
         if (!$clientProductBarcode) {
             return ApiResponse::error('Product not found');
