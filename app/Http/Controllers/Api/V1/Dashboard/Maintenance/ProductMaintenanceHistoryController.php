@@ -55,7 +55,6 @@ class ProductMaintenanceHistoryController extends Controller implements HasMiddl
         $address = AnagraphicAddress::where('anagraphic_guid', $calendarEvent->client_guid)->first();
 
         return [
-            'maintenanceType' => $calendarEvent->maintenance_type,
             'productBarcode' => $calendarEvent->product_barcode,
             'productCode' => $clientProductBarcode->codice,
             'productDescription' => trim($calendarEvent->description) . ' - ' . $calendarEvent->product_barcode,
