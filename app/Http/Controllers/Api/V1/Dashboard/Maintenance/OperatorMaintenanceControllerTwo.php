@@ -180,18 +180,21 @@ foreach ($maintenanceDetails as $detail) {
     $productGuids = explode('##', $detail->product_guids ?? '');
 
     // Step 2: Get product codes from DB
-    $productCodes = DB::connection('proMaintenances')->table('anagraphic_product_codes')
+    $productCodesData = DB::connection('proMaintenances')->table('anagraphic_product_codes')
         ->whereIn('guid', $productGuids)
-        ->pluck('codice')
-        ->toArray();
+        ->get();
 
     $detailProductBarCodes = [];
 
-    foreach($productCodes as $productCode){
+    $productCodes = [];
+
+    foreach($productCodesData as $productCode){
         $detailProductBarCodes[] = [
             'productGuid' => $productCode->guid,
             'productBarCode' => $productCode->barcode
         ];
+
+        $productCodes[] = $productCode->barcode;
     }
     // Step 3: Join codes or default to "-"
     $productCodice = count($productCodes) ? implode(', ', $productCodes) : '-';

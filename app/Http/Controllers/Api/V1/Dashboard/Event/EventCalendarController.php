@@ -130,14 +130,10 @@ class EventCalendarController extends Controller implements HasMiddleware
         $maintenanceType = $filters['maintenanceType'] ?? null;
         $startAt = $filters['startAt'] ?? null;
         $endAt = $filters['endAt'] ?? null;
-        $now = now();
-
-        $mergedEvents = collect();
 
         $events = CalendarEvent::whereIn('maintenance_type', [MaintenanceType::MAINTANANCE->value, MaintenanceType::CONTROL->value])
         ->when($startAt, fn($query) => $query->where('start_at', '>=', $startAt))
         ->get();
-
 
         return ApiResponse::success(AllEventResource::collection($events));
     }
