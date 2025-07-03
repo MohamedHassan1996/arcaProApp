@@ -15,6 +15,16 @@ class AllEventResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+            $now = now();
+            $nextMonth = $now->copy()->addMonth();
+
+            $startDate = Carbon::parse($this->start_at);
+
+            $statusColor = 0;
+            if ($startDate->gt($now)) {
+                $statusColor = $startDate->lte($nextMonth) ? 1 : 2;
+            }
+
 
         return [
             'eventId' => (string)$this->id,
@@ -26,7 +36,7 @@ class AllEventResource extends JsonResource
                 : Carbon::parse($this->start_at)->addMinutes(2)->format('Y-m-d H:i'),
             'maintenanceType' => $this->maintenance_type,
             'maintenanceGuid' => $this->maintenance_guid?? $this->title,
-            'statusColor' => $this->color_status
+            'statusColor' => $statusColor
         ];
     }
 }
