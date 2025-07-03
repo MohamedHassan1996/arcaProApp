@@ -48,14 +48,27 @@ class OperatorMaintenanceControllerTwo extends Controller implements HasMiddlewa
         $maintenanceReportsIds = MaintenanceReport::pluck('maintenance_guid')->toArray();
 
         // Get maintenance GUIDs for specific intervention types that have product_guids
-        $maintenanceDetailsIds = MaintenanceDetail::whereIn('tipo_intervento_guid', [
+        $maintenanceDetails = MaintenanceDetail::whereIn('tipo_intervento_guid', [
                 '28e1c7d1-3a11-4660-8e6c-66dab6e17ec5',
                 'fa7202e8-65a4-49b4-83f5-39784ca1f22f',
                 'e7740d9b-551f-416f-954c-a648c281d436'
             ])
             ->where('product_guids', '!=', '')
-            ->pluck('maintenance_guid')
-            ->toArray();
+            ->whereNotNull('product_guids')
+            ->get();
+
+        $maintenanceDetailsIds = [];
+
+        foreach ($maintenanceDetails as $key => $value) {
+            $exploded = explode(',', $value->product_guids);
+
+            $productGuids = DB::connection('proMaintenances')->table('anagraphic_product_codes')->whereIn('guid', $exploded)->pluck('guid')->toArray();
+
+            if (count($productGuids) > 0) {
+                $maintenanceDetailsIds[] = $value->maintenance_guid;
+            }
+
+        }
 
         // Exclude those that already have reports
         $allNotMaintenanceReportsIds = array_values(array_diff($maintenanceDetailsIds, $maintenanceReportsIds));

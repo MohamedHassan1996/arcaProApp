@@ -408,7 +408,7 @@ private function buildMaintenanceResult($event, $type, $intervalMonths, $install
         'productDescription' => trim($event->description) . ' - ' . $event->product_barcode,
         'maintenanceDate' => $startDate->format('d/m/Y'),
         'clientName' => $client?->regione_sociale ?? '',
-        'clientGuid' => $event->client_guid,
+        'clientGuid' => $client->guid,
         'clientAddress' => $address
             ? trim("{$address->address} {$address->city} ({$address->province})")
             : '',
