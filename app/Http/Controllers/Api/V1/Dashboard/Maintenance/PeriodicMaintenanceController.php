@@ -509,9 +509,9 @@ public function index(Request $request)
         $startDate = Carbon::parse($event->start_at);
 
         $statusColor = match (true) {
-            $startDate->lt($now) => 1,
-            $startDate->between($now, $nextMonth) => 2,
-            default => 0,
+            $startDate->lt($now) => 0,
+            $startDate->between($now, $nextMonth) => 1,
+            default => 2,
         };
 
         $client = $clients->get($event->client_guid ?: null);
