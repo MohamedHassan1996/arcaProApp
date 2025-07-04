@@ -19,6 +19,8 @@ use GuzzleHttp\Promise\Create;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+
 
 class PeriodicMaintenanceController extends Controller implements HasMiddleware
 {
@@ -447,106 +449,128 @@ private function passesEndedCondition($date, $endedFilter)
     return true;
 }*/
 
-public function index(Request $request)
-{
-    $filters = $request->filter ?? [];
+    public function index(Request $request)
+    {
+        $filters = $request->filter ?? [];
 
-    $now = now();
-    $nextMonth = $now->copy()->addMonth();
+        $now = now();
+        $nextMonth = $now->copy()->addMonth();
 
-    $maintenanceTypeFilter = $filters['maintenanceType'] ?? null;
-    $endedFilter = $filters['endedMaintenance'] ?? null;
-    $clientGuid = $filters['clientGuid'] ?? null;
+        $maintenanceTypeFilter = $filters['maintenanceType'] ?? null;
+        $endedFilter = $filters['endedMaintenance'] ?? null;
+        $clientGuid = $filters['clientGuid'] ?? null;
 
-    $startAtFilter = isset($filters['startAt']) ? Carbon::parse($filters['startAt'])->startOfDay() : null;
-    $endAtFilter = isset($filters['endAt']) ? Carbon::parse($filters['endAt'])->endOfDay() : null;
+        $getDataFrom = isset($filters['dataFrom']) ? Carbon::parse($filters['dataFrom'])->startOfDay() : null;
 
-    // Step 1: Filtered events
-    $events = CalendarEvent::query()
-        ->whereNot('maintenance_type', MaintenanceType::INSTALLATION->value)
-        ->when($clientGuid, fn($q) => $q->where('client_guid', $clientGuid))
-        ->when($maintenanceTypeFilter, fn($q) => $q->where('maintenance_type', $maintenanceTypeFilter))
-        ->when($startAtFilter && $endAtFilter, fn($q) => $q->whereBetween('start_at', [$startAtFilter, $endAtFilter]))
-        ->when($startAtFilter && !$endAtFilter, fn($q) => $q->where('start_at', '>=', $startAtFilter))
-        ->when(!$startAtFilter && $endAtFilter, fn($q) => $q->where('start_at', '<=', $endAtFilter))
-        ->when(!is_null($endedFilter), function ($q) use ($now, $nextMonth, $endedFilter) {
-            if ($endedFilter == 1) {
-                $q->where('start_at', '<', $now);
-            } elseif ($endedFilter == 0) {
-                $q->whereBetween('start_at', [$now, $nextMonth]);
-            }
-        })
-        ->orderBy('start_at')
-        ->get();
+        $startAtFilter = isset($filters['startAt']) ? Carbon::parse($filters['startAt'])->startOfDay() : null;
+        $endAtFilter = isset($filters['endAt']) ? Carbon::parse($filters['endAt'])->endOfDay() : null;
 
-    if ($events->isEmpty()) {
-        return ApiResponse::success(new AllPeriodicMaintenanceCollection([]));
+        // if($getDataFrom && $startAtFilter && $endAtFilter) {
+        //     $startAtFilter = $getDataFrom;
+        //     $endAtFilter = $getDataFrom;
+        // } elseif($getDataFrom && $startAtFilter && !$endAtFilter) {
+        //     $startAtFilter = $getDataFrom;
+        // }elseif($getDataFrom && !$startAtFilter && $endAtFilter) {
+        //     $endAtFilter = $getDataFrom;
+        // }
+
+        // Step 1: Filtered events
+        $events = CalendarEvent::query()
+            ->whereNot('maintenance_type', MaintenanceType::INSTALLATION->value)
+            ->when($clientGuid, fn($q) => $q->where('client_guid', $clientGuid))
+            ->when($maintenanceTypeFilter, fn($q) => $q->where('maintenance_type', $maintenanceTypeFilter))
+            ->when($startAtFilter && $endAtFilter, fn($q) => $q->whereBetween('start_at', [$startAtFilter, $endAtFilter]))
+            ->when($startAtFilter && !$endAtFilter, fn($q) => $q->where('start_at', '>=', $startAtFilter))
+            ->when(!$startAtFilter && $endAtFilter, fn($q) => $q->where('start_at', '<=', $endAtFilter))
+            ->when(!is_null($endedFilter), function ($q) use ($now, $nextMonth, $endedFilter) {
+                if ($endedFilter == 1) {
+                    $q->where('start_at', '<', $now);
+                } elseif ($endedFilter == 0) {
+                    $q->whereBetween('start_at', [$now, $nextMonth]);
+                }
+            })
+            ->when($getDataFrom, fn($q) => $q->where('created_at', '>=', $getDataFrom))
+            ->orderBy('start_at')
+            ->get();
+
+            $formattedData = collect($events);
+
+        if ($events->isEmpty()) {
+                return ApiResponse::success(
+                new AllPeriodicMaintenanceCollection(
+                    PaginateCollection::paginate($formattedData, $request->pageSize ?? 100000)
+                )
+            );
+        }
+
+
+
+        // Step 2: Preload all necessary related data
+        $barcodes = $events->pluck('product_barcode')->filter()->unique();
+        $clientGuids = $events->pluck('client_guid')->filter()->unique();
+
+
+
+        $installations = CalendarEvent::query()
+            ->where('maintenance_type', MaintenanceType::INSTALLATION->value)
+            ->whereIn('product_barcode', $barcodes)
+            ->latest('start_at')
+            ->get()
+            ->keyBy('product_barcode');
+
+        $histories = CalendarEvent::query()
+            ->whereIn('product_barcode', $barcodes)
+            ->orderBy('start_at')
+            ->get()
+            ->groupBy('product_barcode');
+
+        $clients = Anagraphic::whereIn('guid', $clientGuids)->get()->keyBy('guid');
+        $addresses = AnagraphicAddress::whereIn('anagraphic_guid', $clientGuids)->get()->keyBy('anagraphic_guid');
+
+        // Step 3: Format data
+        $formattedData = $events->map(function ($event) use ($now, $nextMonth, $clients, $addresses, $installations, $histories) {
+            $barcode = $event->product_barcode;
+            $startDate = Carbon::parse($event->start_at);
+
+            $statusColor = match (true) {
+                $startDate->lt($now) => 0,
+                $startDate->between($now, $nextMonth) => 1,
+                default => 2,
+            };
+
+            $client = $clients->get($event->client_guid ?: null);
+            $address = $addresses->get($event->client_guid ?: null);
+            $installation = $installations->get($barcode);
+            $history = $histories->get($barcode)?->map(fn($item) => [
+                'maintenanceType' => $item->maintenance_type,
+                'maintenanceDate' => Carbon::parse($item->start_at)->format('d/m/Y'),
+            ])->values()->toArray() ?? [];
+
+            return [
+                'maintenanceType' => $event->maintenance_type,
+                'productBarcode' => $barcode,
+                'productCode' => $barcode,
+                'productDescription' => trim($event->description) . ' - ' . $barcode,
+                'maintenanceDate' => $startDate->format('d/m/Y'),
+                'clientName' => $client?->regione_sociale ?? '',
+                'clientGuid' => $client?->guid ?? '',
+                'clientAddress' => $address
+                    ? trim("{$address->address} {$address->city} ({$address->province})")
+                    : '',
+                'statusColor' => $statusColor,
+                'installationDate' => $installation
+                    ? Carbon::parse($installation->start_at)->format('d/m/Y')
+                    : '',
+                'maintenanceHistory' => $history,
+            ];
+        });
+
+        // Step 4: Paginate and return
+        return ApiResponse::success(
+            new AllPeriodicMaintenanceCollection(
+                PaginateCollection::paginate($formattedData, $request->pageSize ?? 100000)
+            )
+        );
     }
-
-    // Step 2: Preload all necessary related data
-    $barcodes = $events->pluck('product_barcode')->filter()->unique();
-    $clientGuids = $events->pluck('client_guid')->filter()->unique();
-
-    $installations = CalendarEvent::query()
-        ->where('maintenance_type', MaintenanceType::INSTALLATION->value)
-        ->whereIn('product_barcode', $barcodes)
-        ->latest('start_at')
-        ->get()
-        ->keyBy('product_barcode');
-
-    $histories = CalendarEvent::query()
-        ->whereIn('product_barcode', $barcodes)
-        ->orderBy('start_at')
-        ->get()
-        ->groupBy('product_barcode');
-
-    $clients = Anagraphic::whereIn('guid', $clientGuids)->get()->keyBy('guid');
-    $addresses = AnagraphicAddress::whereIn('anagraphic_guid', $clientGuids)->get()->keyBy('anagraphic_guid');
-
-    // Step 3: Format data
-    $formattedData = $events->map(function ($event) use ($now, $nextMonth, $clients, $addresses, $installations, $histories) {
-        $barcode = $event->product_barcode;
-        $startDate = Carbon::parse($event->start_at);
-
-        $statusColor = match (true) {
-            $startDate->lt($now) => 0,
-            $startDate->between($now, $nextMonth) => 1,
-            default => 2,
-        };
-
-        $client = $clients->get($event->client_guid ?: null);
-        $address = $addresses->get($event->client_guid ?: null);
-        $installation = $installations->get($barcode);
-        $history = $histories->get($barcode)?->map(fn($item) => [
-            'maintenanceType' => $item->maintenance_type,
-            'maintenanceDate' => Carbon::parse($item->start_at)->format('d/m/Y'),
-        ])->values()->toArray() ?? [];
-
-        return [
-            'maintenanceType' => $event->maintenance_type,
-            'productBarcode' => $barcode,
-            'productCode' => $barcode,
-            'productDescription' => trim($event->description) . ' - ' . $barcode,
-            'maintenanceDate' => $startDate->format('d/m/Y'),
-            'clientName' => $client?->regione_sociale ?? '',
-            'clientGuid' => $client?->guid ?? '',
-            'clientAddress' => $address
-                ? trim("{$address->address} {$address->city} ({$address->province})")
-                : '',
-            'statusColor' => $statusColor,
-            'installationDate' => $installation
-                ? Carbon::parse($installation->start_at)->format('d/m/Y')
-                : '',
-            'maintenanceHistory' => $history,
-        ];
-    });
-
-    // Step 4: Paginate and return
-    return ApiResponse::success(
-        new AllPeriodicMaintenanceCollection(
-            PaginateCollection::paginate($formattedData, $request->pageSize ?? 100000)
-        )
-    );
-}
 
 }

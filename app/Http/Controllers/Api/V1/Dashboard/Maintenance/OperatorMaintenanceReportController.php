@@ -122,6 +122,7 @@ class OperatorMaintenanceReportController extends Controller implements HasMiddl
                             'title' => $productCodice['productDescription'],
                             'description' => $productCodice['productDescription'],
                             'maintenance_type' => $productCodice['maintenanceType'],
+                            'product_barcode' => $productCodice['productBarcode'],
                             'start_at' => $maintenanceStartDate,
                             'end_at' => $maintenanceStartDate,
                             'is_all_day' => 1,
@@ -139,9 +140,10 @@ class OperatorMaintenanceReportController extends Controller implements HasMiddl
                     }
 
                     $nextEvent = CalendarEvent::create([
-                        'title' => $productCodice['productBarcode'],
-                        'description' => null,
+                        'title' => $productCodice['productDescription'],
+                        'description' => $productCodice['productDescription'],
                         'maintenance_type' => $productCodice['maintenanceType'],
+                        'product_barcode' => $productCodice['productBarcode'],
                         'start_at' => $nextMaintenanceDate,
                         'end_at' => $nextMaintenanceDate,
                         'is_all_day' => 1,
