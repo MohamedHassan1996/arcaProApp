@@ -35,13 +35,26 @@ class PeriodicMaintenanceStatsController extends Controller implements HasMiddle
         // $endedFilter = $filters['endedMaintenance'] ?? null;
 
         $now = now(config('app.timezone'));
-        $inThirtyDays = $now->copy()->addDays(30);
+        $inThirtyDays = $now->copy()->addMonth();
 
 
         $totalCount = CalendarEvent::whereIn('maintenance_type', [
             MaintenanceType::MAINTANANCE->value,
-            MaintenanceType::CONTROL->value
-        ])->count('product_barcode');
+            MaintenanceType::CONTROL->value,
+        ])->count();
+
+    //     $latestCount = DB::table('calendar_events')
+    // ->selectRaw('COUNT(*) as total')
+    // ->fromSub(function ($query) {
+    //     $query->selectRaw('*, ROW_NUMBER() OVER (PARTITION BY product_barcode, maintenance_type ORDER BY start_at DESC) as rn')
+    //         ->from('calendar_events')
+    //         ->whereIn('maintenance_type', [
+    //             MaintenanceType::MAINTANANCE->value,
+    //             MaintenanceType::CONTROL->value,
+    //         ]);
+    // }, 'sub')
+    // ->where('rn', 1)
+    // ->count();
 
         $expiredMaintenanceCount = CalendarEvent::where('maintenance_type', MaintenanceType::MAINTANANCE->value)->where('is_done', 0)->where('start_at', '<', $now)->count();
 
