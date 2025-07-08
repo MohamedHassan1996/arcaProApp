@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\Dashboard\Maintenance\OperatorMaintenanceReportC
 use App\Http\Controllers\Api\V1\Dashboard\Maintenance\PeriodicMaintenanceController;
 use App\Http\Controllers\Api\V1\Dashboard\Maintenance\PeriodicMaintenanceStatsController;
 use App\Http\Controllers\Api\V1\Dashboard\Maintenance\ProductMaintenanceHistoryController;
+use App\Http\Controllers\Api\V1\Dashboard\Maintenance\SendReportToClientController;
 use App\Http\Controllers\Api\V1\Dashboard\User\ChangeForgetPasswordController;
 use App\Http\Controllers\Api\V1\Dashboard\User\UserController;
 use App\Http\Controllers\Api\V1\Select\SelectController;
@@ -78,7 +79,7 @@ Route::prefix('v1/')->group(function () {
         Route::get('', [SelectController::class, 'getSelects']);
     });
 
-    Route::post('send-maintenance-report', MaintenanceRequestController::class);
+    Route::post('send-maintenance-report', SendReportToClientController::class);
 
 
 });
