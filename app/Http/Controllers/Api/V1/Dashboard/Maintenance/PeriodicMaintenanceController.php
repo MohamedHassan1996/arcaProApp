@@ -478,7 +478,7 @@ private function passesEndedCondition($date, $endedFilter)
         $aganteProductCode = [];
 
         if($aganteCode) {
-            $aganteProductCode = DB::connection('proMaintenances')->table('anagraphic_product_codes')->where('codice_agente', $aganteCode)->pluck('product_barcode')->toArray();
+            $aganteProductCode = DB::connection('proMaintenances')->table('anagraphic_product_codes')->where('codice_agente', $aganteCode)->pluck('barcode')->toArray();
         }
 
         // Step 1: Filtered events
