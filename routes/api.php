@@ -78,4 +78,7 @@ Route::prefix('v1/')->group(function () {
         Route::get('', [SelectController::class, 'getSelects']);
     });
 
+    Route::post('send-maintenance-report', MaintenanceRequestController::class);
+
+
 });

@@ -10,6 +10,7 @@ use App\Models\CalendarEvent;
 use App\Models\Maintenance;
 use App\Models\MaintenanceReport;
 use App\Models\MaintenanceStockItem;
+use App\Models\ProParameterValue;
 use App\Models\ReportProductBarcode;
 use Carbon\Carbon;
 use Illuminate\Routing\Controllers\HasMiddleware;
@@ -40,8 +41,9 @@ class OperatorMaintenanceReportController extends Controller implements HasMiddl
 
             DB::beginTransaction();
 
-            $monthsOfPeriodicMaintenance = 3;
-            $monthsOfControlledMaintenance = 6;
+            $monthsOfPeriodicMaintenance = (int)ProParameterValue::where('parameter_value', 'MANUTENZIONE')->where('parameter_id', 20)->first()->description ;
+            $monthsOfControlledMaintenance = (int)ProParameterValue::where('parameter_value', 'CONTROLLO')->where('parameter_id', 20)->first()->description;
+
 
             $maintenanceTypesGuids = [
                 '28e1c7d1-3a11-4660-8e6c-66dab6e17ec5' => MaintenanceType::INSTALLATION->value,
@@ -76,14 +78,62 @@ class OperatorMaintenanceReportController extends Controller implements HasMiddl
                         ->get();
 
                     foreach ($clientProductBarcodes as $item) {
+
+                        $hasMaintenacePeriod = null;
+
+                        if($maintenanceTypesGuids[$detail->tipo_intervento_guid] == MaintenanceType::CONTROL->value) {
+                            $hasMaintenacePeriod = DB::connection('proMaintenances')
+                                ->table('product_maintenance_periods')
+                                ->where('anagraphic_guid', $maintenance->anagraphic_guid)
+                                ->where('product_barcode_guids', 'like', '%'.$item->guid.'%')
+                                ->where('maintenance_type', '2')
+                                ->first()?->period??null;
+
+                            if(!$hasMaintenacePeriod) {
+                                $hasMaintenacePeriod = DB::connection('proMaintenances')
+                                    ->table('product_maintenance_periods')
+                                    ->where('anagraphic_guid', $maintenance->anagraphic_guid)
+                                    ->where('maintenance_type', '1')
+                                    ->first()?->period??null;
+                            }
+
+                            if(!$hasMaintenacePeriod) {
+
+                                $hasMaintenacePeriod = $monthsOfControlledMaintenance;
+                            }
+
+
+                        }elseif($maintenanceTypesGuids[$detail->tipo_intervento_guid] == MaintenanceType::MAINTANANCE->value) {
+                            $hasMaintenacePeriod = DB::connection('proMaintenances')
+                                ->table('product_maintenance_periods')
+                                ->where('anagraphic_guid', $maintenance->anagraphic_guid)
+                                ->where('product_barcode_guids', 'like', '%'.$item->guid.'%')
+                                ->where('maintenance_type', '1')
+                                ->first()?->period??null;
+                            if(!$hasMaintenacePeriod) {
+                                $hasMaintenacePeriod = DB::connection('proMaintenances')
+                                    ->table('product_maintenance_periods')
+                                    ->where('anagraphic_guid', $maintenance->anagraphic_guid)
+                                    ->where('maintenance_type', '2')
+                                    ->first()?->period??null;
+                            }
+
+                            if(!$hasMaintenacePeriod) {
+
+                                $hasMaintenacePeriod = $monthsOfPeriodicMaintenance;
+                            }
+                        }
                         $maintenanceProductGuids[] = [
                             'productBarcodeGuid' => $item->guid,
                             'productDescription' => $item->description,
                             'productBarcode' => $item->barcode,
-                            'maintenanceType' => $maintenanceTypesGuids[$detail->tipo_intervento_guid] ?? null
+                            'maintenanceType' => $maintenanceTypesGuids[$detail->tipo_intervento_guid] ?? null,
+                            'maintenancePeriod' => $hasMaintenacePeriod,
                         ];
                     }
+
                 }
+
 
 
                 $maintenanceStartDate = isset($report['date']) ? Carbon::parse($report['date'])->startOfDay() : Carbon::parse($maintenance->start_date)->startOfDay();
@@ -132,11 +182,10 @@ class OperatorMaintenanceReportController extends Controller implements HasMiddl
 
 
                     $nextMaintenanceDate = null;
-                    if($productCodice['maintenanceType'] == MaintenanceType::MAINTANANCE->value || $productCodice['maintenanceType'] == MaintenanceType::INSTALLATION->value) {
-                        $nextMaintenanceDate = $maintenanceStartDate->addMonths($monthsOfPeriodicMaintenance);
-
+                    if($productCodice['maintenanceType'] == MaintenanceType::MAINTANANCE->value || $productCodice['maintenanceType'] == MaintenanceType::INSTALLATION->value){
+                        $nextMaintenanceDate = $maintenanceStartDate->addDays($productCodice['maintenancePeriod']);
                     }elseif($productCodice['maintenanceType'] == MaintenanceType::CONTROL->value) {
-                        $nextMaintenanceDate = $maintenanceStartDate->addMonths($monthsOfControlledMaintenance);
+                        $nextMaintenanceDate = $maintenanceStartDate->addDays($productCodice['maintenancePeriod']);
                     }
 
                     $nextEvent = CalendarEvent::create([
