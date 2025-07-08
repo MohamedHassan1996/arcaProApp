@@ -28,12 +28,6 @@ class SendReportToClientController extends Controller implements HasMiddleware
     try {
         DB::beginTransaction();
 
-        $request->validate([
-            'productBarcode' => 'required|string',
-            'note' => 'nullable|string',
-            'files.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10000'
-        ]);
-
         $maintenanceReports = MaintenanceReport::whereIn('maintenance_guid', $request->maintenanceGuids)->get();
 
         foreach ($maintenanceReports as $maintenanceReport) {
@@ -47,7 +41,7 @@ class SendReportToClientController extends Controller implements HasMiddleware
 
         DB::commit();
 
-        return ApiResponse::success([], 'Maintenance request sent successfully.');
+        return ApiResponse::success([], 'Maintenance report sent successfully.');
     } catch (\Throwable $th) {
         DB::rollBack();
         throw $th;
