@@ -559,7 +559,7 @@ private function passesEndedCondition($date, $endedFilter)
                 'maintenanceType' => $event->maintenance_type,
                 'productBarcode' => $barcode,
                 'productCode' => $barcode,
-                'codiceAgente' => $codiceAgentes->get($barcode)?->codice_agente ?? '',
+                'agenteCode' => $codiceAgentes->get($barcode)?->codice_agente ?? '',
                 'productDescription' => trim($event->description) . ' - ' . $barcode,
                 'maintenanceDate' => $startDate->format('d/m/Y'),
                 'clientName' => $client?->regione_sociale ?? '',
