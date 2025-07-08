@@ -464,6 +464,7 @@ private function passesEndedCondition($date, $endedFilter)
 
         $startAtFilter = isset($filters['startAt']) ? Carbon::parse($filters['startAt'])->startOfDay() : null;
         $endAtFilter = isset($filters['endAt']) ? Carbon::parse($filters['endAt'])->endOfDay() : null;
+        $aganteCode = isset($filters['agenteCode']) ? $filters['agenteCode'] : null;
 
         // if($getDataFrom && $startAtFilter && $endAtFilter) {
         //     $startAtFilter = $getDataFrom;
@@ -473,6 +474,12 @@ private function passesEndedCondition($date, $endedFilter)
         // }elseif($getDataFrom && !$startAtFilter && $endAtFilter) {
         //     $endAtFilter = $getDataFrom;
         // }
+
+        $aganteProductCode = [];
+
+        if($aganteCode) {
+            $aganteProductCode = DB::connection('proMaintenances')->table('anagraphic_product_codes')->where('codice_agente', $aganteCode)->pluck('barcode')->toArray();
+        }
 
         // Step 1: Filtered events
         $events = CalendarEvent::query()
@@ -490,6 +497,7 @@ private function passesEndedCondition($date, $endedFilter)
                 }
             })
             ->when($getDataFrom, fn($q) => $q->where('created_at', '>=', $getDataFrom))
+            ->when($aganteCode, fn($q) => $q->whereIn('product_barcode', $aganteProductCode))
             ->orderBy('start_at')
             ->get();
 
