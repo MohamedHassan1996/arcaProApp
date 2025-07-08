@@ -32,11 +32,11 @@ class SendReportToClientController extends Controller implements HasMiddleware
 
         foreach ($maintenanceReports as $maintenanceReport) {
             if(!empty($maintenanceReport->path)) {
-                $file = Storage::disk('public')->get($maintenanceReport->path);
+                 Mail::to('mr10dev10@gmail.com')->send(new SendMaintenanceReportMail(
+                $maintenanceReport->path
+                ));
             }
-            Mail::to('mr10dev10@gmail.com')->send(new SendMaintenanceReportMail(
-                $file
-            ));
+
         }
 
         DB::commit();
