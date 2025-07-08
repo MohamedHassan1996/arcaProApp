@@ -11,13 +11,8 @@ Thanks,<br>
 {{ config('app.name') }}
 </x-mail::message> --}}
 @component('mail::message')
-# Maintenance Request
+# Maintenance Report
 
-**Product Barcode:** {{ $productBarcode }}
-
-**Note:**
-
-{{ $note }}
 
 Thanks, ArcaPro<br>
 
