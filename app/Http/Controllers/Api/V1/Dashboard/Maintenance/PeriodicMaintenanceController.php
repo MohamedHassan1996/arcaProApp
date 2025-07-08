@@ -534,9 +534,10 @@ private function passesEndedCondition($date, $endedFilter)
 
         $clients = Anagraphic::whereIn('guid', $clientGuids)->get()->keyBy('guid');
         $addresses = AnagraphicAddress::whereIn('anagraphic_guid', $clientGuids)->get()->keyBy('anagraphic_guid');
+        $codiceAgentes = DB::connection('proMaintenances')->table('anagraphic_product_codes')->select('codice_agente', 'barcode')->whereIn('barcode', $barcodes)->get()->keyBy('barcode');
 
         // Step 3: Format data
-        $formattedData = $events->map(function ($event) use ($now, $nextMonth, $clients, $addresses, $installations, $histories) {
+        $formattedData = $events->map(function ($event) use ($now, $nextMonth, $clients, $addresses, $installations, $histories, $codiceAgentes) {
             $barcode = $event->product_barcode;
             $startDate = Carbon::parse($event->start_at);
 
@@ -558,6 +559,7 @@ private function passesEndedCondition($date, $endedFilter)
                 'maintenanceType' => $event->maintenance_type,
                 'productBarcode' => $barcode,
                 'productCode' => $barcode,
+                'codiceAgente' => $codiceAgentes->get($barcode)?->codice_agente ?? '',
                 'productDescription' => trim($event->description) . ' - ' . $barcode,
                 'maintenanceDate' => $startDate->format('d/m/Y'),
                 'clientName' => $client?->regione_sociale ?? '',
