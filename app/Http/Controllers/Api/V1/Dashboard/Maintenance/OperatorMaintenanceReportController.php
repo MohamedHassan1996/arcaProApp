@@ -56,7 +56,7 @@ class OperatorMaintenanceReportController extends Controller implements HasMiddl
 
 
                 if(isset($report['path'])) {
-                    $path = Storage::disk('public')->putFileAs('maintenance_reports', $report['path'], Str::random(10));
+                    $path = Storage::disk('public')->putFileAs('maintenance_reports', $report['path'], Str::random(10).'.'.$report['path']->getClientOriginalExtension());
                 }
 
                 $maintenanceDetails = DB::connection('proMaintenances')
