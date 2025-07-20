@@ -20,6 +20,11 @@ return new class extends Migration
             $table->dateTime('end_at')->nullable();
             $table->boolean('is_all_day')->default(0);
             $table->tinyInteger('maintenance_type')->default(MaintenanceType::INSTALLATION->value);
+            $table->string('location')->nullable();
+            $table->string('product_barcode');
+            $table->string('address')->nullable();
+            $table->string('location')->nullable();
+            $table->tinyInteger('is_done', )->default(0);
             $table->string('client_guid', 36)->nullable();
             $table->timestamps();
         });
