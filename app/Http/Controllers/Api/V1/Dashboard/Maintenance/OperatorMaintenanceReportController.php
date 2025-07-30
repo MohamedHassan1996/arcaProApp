@@ -204,17 +204,19 @@ class OperatorMaintenanceReportController extends Controller implements HasMiddl
 
                 $stockItems = $report['stockItems'];
 
-                foreach ($stockItems as $stockItemData) {
-                    $stockItem = MaintenanceStockItem::create([
-                        'maintenance_report_id' => $maintenanceReport->id,
-                        'stock_item_guid' => $stockItemData['vehicleStockGuid'],
-                        'quantity' => $stockItemData['quantity'],
-                    ]);
+                if(count($stockItems) > 0) {
+                    foreach ($stockItems as $stockItemData) {
+                        $stockItem = MaintenanceStockItem::create([
+                            'maintenance_report_id' => $maintenanceReport->id,
+                            'stock_item_guid' => $stockItemData['vehicleStockGuid'],
+                            'quantity' => $stockItemData['quantity'],
+                        ]);
 
-                    DB::connection('arca_pro')->table('tb_magazzino')->where('guid', $stockItemData['vehicleStockGuid'])->update([
-                        'quantita' => DB::raw('quantita - ' . $stockItemData['quantity']),
-                        'versione' => now()
-                    ]);
+                        DB::connection('arca_pro')->table('tb_magazzino')->where('guid', $stockItemData['vehicleStockGuid'])->update([
+                            'quantita' => DB::raw('quantita - ' . $stockItemData['quantity']),
+                            'versione' => now()
+                        ]);
+                    }
                 }
             }
 

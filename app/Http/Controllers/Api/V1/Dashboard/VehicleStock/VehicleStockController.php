@@ -52,7 +52,7 @@ class VehicleStockController extends Controller implements HasMiddleware
         //     ->orderByRaw('start_date IS NULL, start_date DESC')
         //     ->paginate($request->pageSize ?? 10);
 
-        $stocks = Stock::select('guid', 'codice', 'descrizione', 'quantita')->where('codice_interno', 'componenti')->where('nome', 'FURGONE')->paginate(10);
+        $stocks = Stock::select('guid', 'codice', 'descrizione', 'quantita')->where('codice_interno', 'componenti')->where('nome', 'FURGONE')->paginate(10000);
 
 
         return ApiResponse::success(new AllVehicleStockCollection($stocks));

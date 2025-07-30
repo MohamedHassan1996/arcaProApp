@@ -24,9 +24,7 @@ use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
 
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
-use function PHPSTORM_META\map;
 
 class OperatorMaintenanceControllerTwo extends Controller implements HasMiddleware
 {
